@@ -1,0 +1,11 @@
+(executable
+ (name dump)
+ (modules dump commons)
+ (public_name caml-eventlog-dump)
+ (libraries cmdliner bos fpath rresult traces))
+
+(executable
+ (name chrome_converter)
+ (modules chrome_converter)
+ (public_name caml-eventlog-to-chrome)
+ (libraries cmdliner bos fpath rresult traces jsonm))
