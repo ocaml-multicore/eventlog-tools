@@ -104,7 +104,7 @@ module Args = struct
     Arg.(required & pos 0 (some string) None  & info [] ~doc )
 
   let outfile = 
-    let doc = "output file" in
+    let doc = "output JSON file" in
     Arg.(required & pos 1 (some string) None  & info [] ~doc )
 
   let info =
@@ -113,7 +113,7 @@ module Args = struct
       `S Manpage.s_bugs;
     ]
     in
-    Term.info "caml-eventlog-chrome-converter" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
+    Term.info "ocaml-eventlog-to-chrome" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
 
 end
 
