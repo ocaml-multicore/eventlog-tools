@@ -1,3 +1,4 @@
 (library
- (name traces)
- (libraries rresult angstrom bigarray bigstringaf))
+ (name eventlog)
+ (modules types parser consts)
+ (libraries angstrom bigarray bigstringaf))

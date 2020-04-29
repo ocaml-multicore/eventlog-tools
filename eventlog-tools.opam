@@ -2,13 +2,19 @@ opam-version: "2.0"
 name:         "eventlog-tools"
 maintainer:   "Enguerrand Decorne <decorne.en@gmail.com>"
 authors:      "Enguerrand Decorne <decorne.en@gmail.com>"
-homepage:     "https://github.com/Engil/ocaml-eventlog-tools"
-bug-reports:  "https://github.com/Engil/ocaml-eventlog-tools/issues"
-dev-repo:     "git+https://github.com/Engil/ocaml-eventlog-tools.git"
-doc:          "https://engil.github.io/ocaml-eventlog-tools/"
-license:      "MIT"
-synopsis:     "Library to parse and convert OCaml instrumented runtime's traces"
-description: """WIP
+homepage:     "https://github.com/ocaml-multicore/eventlog-tools"
+bug-reports:  "https://github.com/ocaml-multicore/eventlog-tools/issues"
+dev-repo:     "git+https://github.com/ocaml-multicore/eventlog-tools.git"
+doc:          "https://ocaml-multicore.github.io/eventlog-tools/"
+license:      "ISC"
+synopsis:     "Parser and tools for the runtime tracing in OCaml 4.11 and higher"
+description: """
+This library provides a set of tools and a pure OCaml decoder implementation to
+allow reading and convertions of traces generated through the instrumented
+runtime available from OCaml 4.11.
+The decoder interface provides a streaming parser library, and the available
+tools includes a simple command line report utility and a converter to
+Google Chrome's Catapult format.
 """
 
 build: [
@@ -18,7 +24,7 @@ build: [
 ]
 
 depends: [
-  "ocaml"      {>= "4.06.0"}
+  "ocaml"      {>= "4.09.0"}
   "dune"       {build}
   "base-bytes"
   "base-bigarray"
@@ -29,4 +35,5 @@ depends: [
   "cmdliner"
   "fpath"
   "bos"
+  "owl-base"
 ]

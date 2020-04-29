@@ -28,7 +28,7 @@ let encode_catapult_prelude e =
   enc e (name "traceEvents");
   enc e as_
 
-let encode_event e { Traces.timestamp; pid; payload; } =
+let encode_event e { Eventlog.Types.timestamp; pid; payload; } =
   let ts = Printf.sprintf "%d.%03d" (timestamp / 1000) (timestamp mod 1000) in
   enc e os;
   enc_name_value e (name "ts") (string ts); 
@@ -66,7 +66,7 @@ let encode_event e { Traces.timestamp; pid; payload; } =
 
     
 let main in_file out_file =
-  let module P = Traces.Parser in
+  let module P = Eventlog.Parser in
   load_file in_file >>= fun data ->
   let decoder = P.decoder () in
   let total_len = Bigstringaf.length data in
@@ -76,9 +76,10 @@ let main in_file out_file =
     encode_catapult_prelude encoder;
     let rec aux () =
       match P.decode decoder with
-      | `Ok ev ->
+      | `Ok Event ev ->
         encode_event encoder ev;
         aux ()
+      | `Ok _ -> aux ()
       | `Error (`Msg msg) -> print_endline msg; Error (`Msg msg)
       | `End -> Ok ()
       | `Await -> Ok ()
@@ -112,7 +113,7 @@ module Args = struct
       `S Manpage.s_bugs;
     ]
     in
-    Term.info "caml-eventlog-chrome-converter" ~version:"%‌%VERSION%%" ~doc ~exits:Term.default_exits ~man
+    Term.info "caml-eventlog-chrome-converter" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
 
 end
 

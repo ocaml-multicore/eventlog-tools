@@ -1,76 +1,95 @@
 (** caml_trace_version 0x1 *)
 
-let phase_to_string = function 
-  | 0 -> "compact/main"
-  | 1 -> "compact/recompact"
-  | 2 -> "explicit/gc_set"
-  | 3 -> "explicit/gc_minor"
-  | 4 -> "explicit/gc_major"
-  | 5 -> "explicit/gc_full_major"
-  | 6 -> "explicit/gc_compact"
-  | 7 -> "major"
-  | 8 -> "major/roots"
-  | 9 -> "major/sweep"
-  | 10 -> "major/mark/roots"
-  | 11 -> "major/mark/main"
-  | 12 -> "major/mark/final"
-  | 13 -> "major/mark"
-  | 14 -> "major/mark/global_roots_slice"
-  | 15 -> "major_roots/global"
-  | 16 -> "major_roots/dynamic_global"
-  | 17 -> "major_roots/local"
-  | 18 -> "major_roots/C"
-  | 19 -> "major_roots/finalised"
-  | 20 -> "major_roots/memprof"
-  | 21 -> "major_roots/hook"
-  | 22 -> "major/check_and_compact"
-  | 23 -> "minor"
-  | 24 -> "minor/local_roots"
-  | 25 -> "minor/ref_tables"
-  | 26 -> "minor/copy"
-  | 27 -> "minor/update_weak"
-  | 28 -> "minor/finalized"
-  | 29 -> "explicit/gc_major_slice"
-  | d -> failwith (Printf.sprintf "phase_to_string: invalid phase %d" d)
+let phase = [| 
+  "compact/main";
+  "compact/recompact";
+  "explicit/gc_set";
+  "explicit/gc_stat";
+  "explicit/gc_minor";
+  "explicit/gc_major";
+  "explicit/gc_full_major";
+  "explicit/gc_compact";
+  "major";
+  "major/roots";
+  "major/sweep";
+  "major/mark/roots";
+  "major/mark/main";
+  "major/mark/final";
+  "major/mark";
+  "major/mark/global_roots_slice";
+  "major_roots/global";
+  "major_roots/dynamic_global";
+  "major_roots/local";
+  "major_roots/C";
+  "major_roots/finalised";
+  "major_roots/memprof";
+  "major_roots/hook";
+  "major/check_and_compact";
+  "minor";
+  "minor/local_roots";
+  "minor/ref_tables";
+  "minor/copy";
+  "minor/update_weak";
+  "minor/finalized";
+  "explicit/gc_major_slice";
+|]
 
-let gc_counter_to_string = function
-  | 0 -> "alloc_jump"
-  | 1 -> "force_minor/alloc_small"
-  | 2 -> "force_minor/make_vect"
-  | 3 -> "force_minor/set_minor_heap_size"
-  | 4 -> "force_minor/weak"
-  | 5 -> "major/mark/slice/remain"
-  | 6 -> "major/mark/slice/fields"
-  | 7 -> "major/mark/slice/pointers"
-  | 8 -> "major/work/extra"
-  | 9 -> "major/work/mark"
-  | 10 -> "major/work/sweep"
-  | 11 -> "minor/promoted"
-  | 12 -> "request_major/alloc_shr"
-  | 13 -> "request_major/adjust_gc_speed"
-  | 14 -> "request_minor/realloc_ref_table"
-  | 15 -> "request_minor/realloc_ephe_ref_table"
-  | 16 -> "request_minor/realloc_custom_table"
-  | d -> failwith (Printf.sprintf "gc_counter_to_string: invalid phase %d" d)
+let phase_to_string i =
+  try
+    phase.(i)
+  with
+  | _ -> failwith (Printf.sprintf "phase_to_string: invalid phase id %d" i)
 
-let alloc_bucket_to_string = function
-  | 1 -> "alloc 01"
-  | 2 -> "alloc 02"
-  | 3 -> "alloc 03"
-  | 4 -> "alloc 04"
-  | 5 -> "alloc 05"
-  | 6 -> "alloc 06"
-  | 7 -> "alloc 07"
-  | 8 -> "alloc 08"
-  | 9 -> "alloc 09"
-  | 10 -> "alloc 10-19"
-  | 11 -> "alloc 20-29"
-  | 12 -> "alloc 30-39"
-  | 13 -> "alloc 40-49"
-  | 14 -> "alloc 50-59"
-  | 15 -> "alloc 60-69"
-  | 16 -> "alloc 70-79"
-  | 17 -> "alloc 80-89"
-  | 18 -> "alloc 90-99"
-  | 19 -> "alloc large"
-  | d -> failwith (Printf.sprintf "alloc_bucket_to_string: invalid bucket %d" d)
+let gc_counter = [|
+  "alloc_jump";
+  "force_minor/alloc_small";
+  "force_minor/make_vect";
+  "force_minor/set_minor_heap_size";
+  "force_minor/weak";
+  "major/mark/slice/remain";
+  "major/mark/slice/fields";
+  "major/mark/slice/pointers";
+  "major/work/extra";
+  "major/work/mark";
+  "major/work/sweep";
+  "minor/promoted";
+  "request_major/alloc_shr";
+  "request_major/adjust_gc_speed";
+  "request_minor/realloc_ref_table";
+  "request_minor/realloc_ephe_ref_table";
+  "request_minor/realloc_custom_table";
+|]
+
+let gc_counter_to_string i =
+  try
+    gc_counter.(i)
+  with
+  | _ -> failwith (Printf.sprintf "gc_counter_to_string: invalid phase %d" i)
+
+let alloc_bucket = [|
+  "alloc 01";
+  "alloc 02";
+  "alloc 03";
+  "alloc 04";
+  "alloc 05";
+  "alloc 06";
+  "alloc 07";
+  "alloc 08";
+  "alloc 09";
+  "alloc 10-19";
+  "alloc 20-29";
+  "alloc 30-39";
+  "alloc 40-49";
+  "alloc 50-59";
+  "alloc 60-69";
+  "alloc 70-79";
+  "alloc 80-89";
+  "alloc 90-99";
+  "alloc large";
+ |]
+
+let alloc_bucket_to_string i =
+  try
+    alloc_bucket.(i - 1)
+  with
+  | _ -> failwith (Printf.sprintf "alloc_bucket_to_string: invalid bucket %d" i)

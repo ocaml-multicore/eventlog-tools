@@ -1,0 +1,207 @@
+open Rresult.R.Infix
+
+module Events = struct
+
+  type t = {
+    h : (string, int) Hashtbl.t; (* temporary table holding the entry event to track an event's lifetime *)
+    mutable last_flush : (int * int); (* timestamp * duration *)
+    events : (string, int list) Hashtbl.t;
+  }
+
+  (* note: when computing an event duration, we check if the last flush event happened
+     inbetween. if so, we deduce the duration of the flush event from this event. *)
+  let update t name v_start v_end =
+    match Hashtbl.find_opt t.events name with
+    | Some l ->
+      let last_flush_ts = fst t.last_flush in
+      let v =
+        if (v_start < last_flush_ts) && (last_flush_ts < v_end) then
+          (v_end - v_start) - (snd t.last_flush)
+        else
+          (v_end - v_start)
+      in 
+      Hashtbl.replace t.events name (v::l)
+    | None -> Hashtbl.add t.events name [v_end - v_start]
+                
+  let handle_exit ({ h; _ } as t) name v =
+    match Hashtbl.find_opt h name with
+    | Some v' -> if v' > v then assert false else
+        begin
+          Hashtbl.remove h name;
+          update t name v' v
+        end;
+    | None -> failwith "no attached entry event" 
+
+  let handle_entry { h;_ } name v =
+    match Hashtbl.find_opt h name with
+    | Some _ -> failwith "overlaping entry events"
+    | None -> Hashtbl.add h name v 
+
+  let handle_flush t ts dur = t.last_flush <- ts, dur
+
+  let create () = {
+    h = Hashtbl.create 12;
+    events = Hashtbl.create 12;
+    last_flush = (0, 0);
+  }
+
+  let get { events; _ } name = Hashtbl.find events name
+      
+end 
+
+type allocs = (string, int) Hashtbl.t
+type counters = (string, int list) Hashtbl.t
+    
+type t = {
+  events : Events.t;
+  allocs : allocs;
+  counters : counters;
+  mutable flushs : int list;
+}
+         
+let read_event { Eventlog.Types.payload; timestamp; _ } ({ allocs; events; counters; _ } as t) =
+  match payload with 
+  | Alloc { bucket; count; } -> begin
+    match Hashtbl.find_opt allocs bucket with
+    | Some v -> Hashtbl.replace allocs bucket (v + count)
+    | _ -> Hashtbl.add allocs bucket count
+  end
+  | Entry {phase; } -> Events.handle_entry events phase timestamp
+  | Exit {phase; } -> Events.handle_exit events phase timestamp
+  | Counter { kind; count; } -> begin
+     match Hashtbl.find_opt counters kind with
+     | Some l -> Hashtbl.replace counters kind (count::l)
+     | None -> Hashtbl.add counters kind [count]
+  end 
+  | Flush {duration; } ->
+    t.flushs <- duration::t.flushs; 
+    Events.handle_flush events timestamp duration
+
+let print_allocs allocs =
+  print_endline "==== allocs";
+  Hashtbl.iter begin fun bucket count ->
+    Printf.printf "%s:\t\t%d\n" bucket count
+  end allocs 
+
+let pprint_time ns =
+  if ns < 1000. then
+    Printf.sprintf "%.0fns" ns
+  else if ns < (1_000_000.) then
+    Printf.sprintf "%.1fus" (ns /. 1_000.)
+  else if ns < (1_000_000_000.) then
+    Printf.sprintf "%.1fms" (ns /. 1_000_000.)
+  else 
+    Printf.sprintf "%.1fs" (ns /. 1_000_000_000.)
+
+let pprint_quantity q =
+  if q < 1000. then
+    Printf.sprintf "%.0f" q
+  else if q < (1_000_000.) then
+    Printf.sprintf "%.1fK" (q /. 1_000.)
+  else 
+    Printf.sprintf "%.1fM" (q /. 1_000_000.)
+
+let bins mul =
+  Array.map (( *. ) mul) [| 100.; 200.; 300.; 500.; |]
+
+let default_bins = Array.concat [
+    [| 0. |];
+    bins 1.;
+    bins 10.;
+    bins 100.;
+    bins 1000.;
+    bins 10000.;
+    bins 100000.;
+    bins 1000000.;
+  ]
+    
+let make_bins max =
+  let max_in_default_bins = Array.get default_bins (Array.length default_bins - 1) in
+  let bins = Array.concat [
+      default_bins;
+    if max > max_in_default_bins then [|max|] else [||];
+  ]
+  in
+  `Bins bins
+  
+let print_histogram name l pprint =
+  let open Owl_base_stats in
+  let arr = l |> Array.of_list |> Array.map float_of_int in
+  let bins = make_bins (max arr) in
+  let h = histogram bins arr in
+  Printf.printf "==== %s:\t\t\t%d\n" name (Array.length arr);
+  for i = 0 to (Array.length h.bins - 2) do
+    if h.counts.(i) > 0 then
+      Printf.printf "%s..%s:\t\t\t%d\n" (pprint h.bins.(i)) (pprint h.bins.(i + 1)) h.counts.(i);
+  done;
+  print_endline "====";
+  ()
+
+let print_events_stats name events =
+  match Events.get events name with
+  | exception Not_found -> ()
+  | events -> print_histogram name events pprint_time
+
+let print_flushs flushs =
+  let a = Array.of_list flushs |> Array.map float_of_int in
+  let median = Owl_base_stats.median a in
+  let total = Owl_base_stats.sum a in
+  Printf.printf "==== eventlog/flush\n";
+  Printf.printf "median flush time: %s\n" (pprint_time median);
+  Printf.printf "total flush time: %s\n" (pprint_time total);
+  Printf.printf "flush count: %d\n" (List.length flushs)
+  
+let load_file path =
+  let open Rresult.R.Infix in
+  Fpath.of_string path
+  >>= Bos.OS.File.read
+  >>= fun content ->
+  Ok (Bigstringaf.of_string ~off:0 ~len:(String.length content) content)
+
+let main in_file =
+  let module P = Eventlog.Parser in
+  load_file in_file >>= fun data ->
+  let decoder = P.decoder () in
+  let total_len = Bigstringaf.length data in
+  P.src decoder data 0 total_len true;
+  let allocs = Hashtbl.create 10 in
+  let events = Events.create () in
+  let counters = Hashtbl.create 10 in
+  let t = { allocs; events; flushs = []; counters; } in
+  let rec aux () =
+    match P.decode decoder with
+    | `Ok Event ev ->
+      read_event ev t;
+      aux ()
+    | `Ok Header _ -> aux ()
+    | `Error (`Msg msg) -> Error (`Msg msg)
+    | `End -> Ok ()
+    | `Await -> Ok ()
+  in
+  aux () >>= fun () ->
+  print_allocs allocs;
+  Array.iter (fun phase -> print_events_stats phase events) Eventlog.Consts.phase;
+  Hashtbl.iter (fun name l -> print_histogram name l pprint_quantity) counters;
+  print_flushs t.flushs;
+  Ok ()
+  
+module Args = struct
+  open Cmdliner
+
+  let trace =
+    let doc = "Print a basic report from an OCaml eventlog file" in
+    Arg.(required & pos 0 (some string) None  & info [] ~doc )
+
+  let info =
+    let doc = "" in
+    let man = [
+      `S Manpage.s_bugs;
+    ]
+    in
+    Term.info "ocaml-eventlog-report" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
+
+end
+
+let () =
+  let open Cmdliner in
+  Term.exit @@ Term.eval Term.(const main  $ Args.trace, Args.info)

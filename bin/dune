@@ -1,11 +1,11 @@
 (executable
- (name dump)
- (modules dump commons)
- (public_name caml-eventlog-dump)
- (libraries cmdliner bos fpath rresult traces))
+ (name eventlog_report)
+ (modules eventlog_report)
+ (public_name ocaml-eventlog-report)
+ (libraries cmdliner bos fpath rresult owl-base eventlog))
 
 (executable
- (name chrome_converter)
- (modules chrome_converter)
- (public_name caml-eventlog-to-chrome)
- (libraries cmdliner bos fpath rresult traces jsonm))
+ (name eventlog_to_chrome)
+ (modules eventlog_to_chrome)
+ (public_name ocaml-eventlog-to-chrome)
+ (libraries cmdliner bos fpath rresult jsonm eventlog))
