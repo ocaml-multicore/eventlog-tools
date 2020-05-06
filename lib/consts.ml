@@ -34,12 +34,6 @@ let phase = [|
   "explicit/gc_major_slice";
 |]
 
-let phase_to_string i =
-  try
-    phase.(i)
-  with
-  | _ -> failwith (Printf.sprintf "phase_to_string: invalid phase id %d" i)
-
 let gc_counter = [|
   "alloc_jump";
   "force_minor/alloc_small";
@@ -59,12 +53,6 @@ let gc_counter = [|
   "request_minor/realloc_ephe_ref_table";
   "request_minor/realloc_custom_table";
 |]
-
-let gc_counter_to_string i =
-  try
-    gc_counter.(i)
-  with
-  | _ -> failwith (Printf.sprintf "gc_counter_to_string: invalid phase %d" i)
 
 let alloc_bucket = [|
   "alloc 01";
@@ -87,9 +75,3 @@ let alloc_bucket = [|
   "alloc 90-99";
   "alloc large";
  |]
-
-let alloc_bucket_to_string i =
-  try
-    alloc_bucket.(i - 1)
-  with
-  | _ -> failwith (Printf.sprintf "alloc_bucket_to_string: invalid bucket %d" i)

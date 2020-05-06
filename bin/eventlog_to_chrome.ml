@@ -1,4 +1,5 @@
 open Rresult.R.Infix
+open Eventlog
     
 let load_file path =
   let open Rresult.R.Infix in
@@ -28,7 +29,7 @@ let encode_catapult_prelude e =
   enc e (name "traceEvents");
   enc e as_
 
-let encode_event e { Eventlog.Types.timestamp; pid; payload; } =
+let encode_event e { timestamp; pid; payload; } =
   let ts = Printf.sprintf "%d.%03d" (timestamp / 1000) (timestamp mod 1000) in
   enc e os;
   enc_name_value e (name "ts") (string ts); 
@@ -38,10 +39,10 @@ let encode_event e { Eventlog.Types.timestamp; pid; payload; } =
   begin match payload with 
   | Entry { phase; } ->
     enc e (string "B");
-    enc_name_value e (name "name") (string phase)
+    enc_name_value e (name "name") (string (string_of_phase phase))
   | Exit { phase; } ->
     enc e (string "E");
-    enc_name_value e (name "name") (string phase)
+    enc_name_value e (name "name") (string (string_of_phase phase))
   | Flush { duration; } ->
     let dur = Printf.sprintf "%d.%03d" (duration / 1000) (duration mod 1000) in
     enc e (string "X");
@@ -49,14 +50,14 @@ let encode_event e { Eventlog.Types.timestamp; pid; payload; } =
     enc_name_value e (name "dur") (string dur); 
   | Alloc { bucket; count; } ->
     enc e (string "C");
-    enc_name_value e (name "name") (string bucket);
+    enc_name_value e (name "name") (string (string_of_alloc_bucket bucket));
     enc e (name "args");
     enc e os;
     enc_name_value e (name "value") (number count);
     enc e oe
   | Counter { kind; count; } ->
     enc e (string "C");
-    enc_name_value e (name "name") (string kind);
+    enc_name_value e (name "name") (string (string_of_gc_counter kind));
     enc e (name "args");
     enc e os;
     enc_name_value e (name "value") (number count);

@@ -3,9 +3,9 @@ open Rresult.R.Infix
 module Events = struct
 
   type t = {
-    h : (string, int) Hashtbl.t; (* temporary table holding the entry event to track an event's lifetime *)
+    h : (Eventlog.phase, int) Hashtbl.t; (* temporary table holding the entry event to track an event's lifetime *)
     mutable last_flush : (int * int); (* timestamp * duration *)
-    events : (string, int list) Hashtbl.t;
+    events : (Eventlog.phase, int list) Hashtbl.t;
   }
 
   (* note: when computing an event duration, we check if the last flush event happened
@@ -46,11 +46,13 @@ module Events = struct
   }
 
   let get { events; _ } name = Hashtbl.find events name
+
+  let iter t f = Hashtbl.iter f t.events
       
 end 
 
-type allocs = (string, int) Hashtbl.t
-type counters = (string, int list) Hashtbl.t
+type allocs = (Eventlog.bucket, int) Hashtbl.t
+type counters = (Eventlog.counter_kind, int list) Hashtbl.t
     
 type t = {
   events : Events.t;
@@ -59,7 +61,7 @@ type t = {
   mutable flushs : int list;
 }
          
-let read_event { Eventlog.Types.payload; timestamp; _ } ({ allocs; events; counters; _ } as t) =
+let read_event { Eventlog.payload; timestamp; _ } ({ allocs; events; counters; _ } as t) =
   match payload with 
   | Alloc { bucket; count; } -> begin
     match Hashtbl.find_opt allocs bucket with
@@ -80,7 +82,7 @@ let read_event { Eventlog.Types.payload; timestamp; _ } ({ allocs; events; count
 let print_allocs allocs =
   print_endline "==== allocs";
   Hashtbl.iter begin fun bucket count ->
-    Printf.printf "%s:\t\t%d\n" bucket count
+    Printf.printf "%s:\t\t%d\n" (Eventlog.string_of_alloc_bucket bucket) count
   end allocs 
 
 let pprint_time ns =
@@ -140,7 +142,7 @@ let print_histogram name l pprint =
 let print_events_stats name events =
   match Events.get events name with
   | exception Not_found -> ()
-  | events -> print_histogram name events pprint_time
+  | events -> print_histogram (Eventlog.string_of_phase name) events pprint_time
 
 let print_flushs flushs =
   let a = Array.of_list flushs |> Array.map float_of_int in
@@ -180,8 +182,8 @@ let main in_file =
   in
   aux () >>= fun () ->
   print_allocs allocs;
-  Array.iter (fun phase -> print_events_stats phase events) Eventlog.Consts.phase;
-  Hashtbl.iter (fun name l -> print_histogram name l pprint_quantity) counters;
+  Events.iter events (fun phase _ -> print_events_stats phase events);
+  Hashtbl.iter (fun name l -> print_histogram (Eventlog.string_of_gc_counter name) l pprint_quantity) counters;
   print_flushs t.flushs;
   Ok ()
   

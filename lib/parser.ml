@@ -1,11 +1,6 @@
 open Angstrom
 open Types
 
-type endianness = Be | Le
-type packet =
-    Header of endianness
-  | Event of event
-
 let magic_be = BE.int32 0xc1fc1fc1l >>= fun () -> return Be    
 let magic_le = LE.int32 0xc1fc1fc1l >>= fun () -> return Le
 
@@ -33,26 +28,26 @@ let parse_event e =
   let entry_event =
     int32 0x0l
     *> any_int16 >>= fun phase ->
-    return (Entry { phase = Consts.phase_to_string phase; }) 
+    return (Entry { phase = phase_of_int phase; }) 
   in
   let exit_event =
     int32 0x1l
     *> any_int16 >>= fun phase ->
-    return (Exit { phase = Consts.phase_to_string phase; })
+    return (Exit { phase = phase_of_int phase; })
   in
   let counter_event =
     int32 0x2l *>
     any_int64 >>= fun count ->
     any_int16 >>= fun kind ->
     return (Counter { count = Int64.to_int count;
-                      kind = Consts.gc_counter_to_string kind; })
+                      kind = gc_counter_of_int kind; })
   in 
   let alloc_event =
     int32 0x3l *>
     any_int64 >>= fun count ->
     any_int8 >>= fun bucket ->
     return (Alloc { count = Int64.to_int count;
-                    bucket = Consts.alloc_bucket_to_string bucket; })
+                    bucket = alloc_bucket_of_int bucket; })
   in
   let flush_event =
     int32 0x4l
