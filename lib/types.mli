@@ -25,6 +25,6 @@ val string_of_gc_counter : counter_kind -> string
 val string_of_alloc_bucket : bucket -> string
 val string_of_phase : phase -> string
 
-val gc_counter_of_int : int -> counter_kind
-val alloc_bucket_of_int : int -> bucket 
-val phase_of_int : int -> phase
+val gc_counter_of_int : int -> (counter_kind, [> Rresult.R.msg ]) result
+val alloc_bucket_of_int : int -> (bucket, [> Rresult.R.msg ]) result
+val phase_of_int : int -> (phase, [> Rresult.R.msg ]) result

@@ -176,7 +176,7 @@ let main in_file =
       read_event ev t;
       aux ()
     | `Ok Header _ -> aux ()
-    | `Error (`Msg msg) -> Error (`Msg msg)
+    | `Error (`Msg msg) -> print_endline msg; Error (`Msg msg)
     | `End -> Ok ()
     | `Await -> Ok ()
   in

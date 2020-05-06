@@ -1,3 +1,5 @@
+module R = Rresult.R
+             
 open Angstrom
 open Types
 
@@ -20,6 +22,11 @@ let stream_id e =
   in
   f 0x0
 
+let (>>?) v f =
+  match v with
+  | Ok v -> f v
+  | Error `Msg msg -> fail msg
+
 let parse_event e =
   let int32 = match e with Be -> BE.int32 | Le -> LE.int32 in
   let any_int16 = match e with Be -> BE.any_int16 | Le -> LE.any_int16 in
@@ -27,27 +34,29 @@ let parse_event e =
   let any_int64 = match e with Be -> BE.any_int64 | Le -> LE.any_int64 in
   let entry_event =
     int32 0x0l
-    *> any_int16 >>= fun phase ->
-    return (Entry { phase = phase_of_int phase; }) 
+    *> any_int16 >>= fun i ->
+    phase_of_int i >>? fun phase ->
+    return (Entry { phase; }) 
   in
   let exit_event =
     int32 0x1l
-    *> any_int16 >>= fun phase ->
-    return (Exit { phase = phase_of_int phase; })
+    *> any_int16 >>= fun i ->
+    phase_of_int i >>? fun phase ->
+    return (Exit { phase; })
   in
   let counter_event =
     int32 0x2l *>
     any_int64 >>= fun count ->
-    any_int16 >>= fun kind ->
-    return (Counter { count = Int64.to_int count;
-                      kind = gc_counter_of_int kind; })
+    any_int16 >>= fun i ->
+    gc_counter_of_int i >>? fun kind ->
+    return (Counter { count = Int64.to_int count; kind; })
   in 
   let alloc_event =
     int32 0x3l *>
     any_int64 >>= fun count ->
-    any_int8 >>= fun bucket ->
-    return (Alloc { count = Int64.to_int count;
-                    bucket = alloc_bucket_of_int bucket; })
+    any_int8 >>= fun i ->
+    alloc_bucket_of_int i >>? fun bucket ->
+    return (Alloc { count = Int64.to_int count; bucket; })
   in
   let flush_event =
     int32 0x4l

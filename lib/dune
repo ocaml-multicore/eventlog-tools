@@ -1,4 +1,4 @@
 (library
  (name eventlog)
  (public_name eventlog-tools.parser)
- (libraries angstrom bigarray bigstringaf))
+ (libraries angstrom bigarray bigstringaf rresult))

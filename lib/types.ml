@@ -1,3 +1,5 @@
+module R = Rresult.R
+           
 type phase = int
 type bucket = int
 type counter_kind = int
@@ -21,38 +23,24 @@ type packet =
     Header of endianness
   | Event of event
 
-let string_of_phase i =
-  try
-    Consts.phase.(i)
-  with
-  | _ -> failwith (Printf.sprintf "string_of_phase: invalid phase id %d" i)
+let string_of_phase i = Consts.phase.(i)
+let string_of_gc_counter i = Consts.gc_counter.(i)
+let string_of_alloc_bucket i = Consts.alloc_bucket.(i)
 
 let phase_of_int i =
   if i < Array.length Consts.phase then
-    i
+    R.return i
   else
-    failwith (Printf.sprintf "phase_of_int: invalid argument %d" i)
-
-let string_of_gc_counter i =
-  try
-    Consts.gc_counter.(i)
-  with
-  | _ -> failwith (Printf.sprintf "string_of_gc_counter: invalid phase %d" i)
+    R.error_msgf "phase_of_int: invalid argument %d" i
 
 let gc_counter_of_int i =
   if i < Array.length Consts.gc_counter then
-    i
+    R.return i
   else
-    failwith (Printf.sprintf "gc_counter_of_int: invalid argument %d" i)
-
-let string_of_alloc_bucket i =
-  try
-    Consts.alloc_bucket.(i - 1)
-  with
-  | _ -> failwith (Printf.sprintf "string_of_alloc_bucket: invalid bucket %d" i)
+    R.error_msgf "gc_counter_of_int: invalid argument %d" i
 
 let alloc_bucket_of_int i =
-  if i < Array.length Consts.alloc_bucket then
-    i
+  if (i - 1) < Array.length Consts.alloc_bucket then
+    R.return (i - 1)
   else
-    failwith (Printf.sprintf "alloc_bucket_of_int: invalid argument %d" i)
+    R.error_msgf "alloc_bucket_of_int: invalid argument %d" i
