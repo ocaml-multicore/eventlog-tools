@@ -1,4 +1,5 @@
 (library
  (name eventlog)
+ (public_name eventlog)
  (modules types parser consts)
  (libraries angstrom bigarray bigstringaf))
