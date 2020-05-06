@@ -29,6 +29,7 @@ depends: [
   "base-bytes"
   "base-bigarray"
   "base-unix"
+  "bigstringaf"
   "angstrom"
   "rresult"
   "fmt"
