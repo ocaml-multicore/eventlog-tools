@@ -32,6 +32,7 @@ depends: [
   "bigstringaf"
   "angstrom"
   "rresult"
+  "jsonm"
   "fmt"
   "cmdliner"
   "fpath"
