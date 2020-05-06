@@ -8,7 +8,7 @@ let check (name, fn) = name, `Quick, (fun () -> Alcotest.check t name (Ok ()) (f
 let test_parser = List.map check Test_parser.tests
 
 let () =
-  Junit_alcotest.run_and_report "Babeltrace" [
+  Junit_alcotest.run_and_report "eventlog-tools" [
     "test_parser", test_parser;
   ]
   |> fun (r, _) ->
