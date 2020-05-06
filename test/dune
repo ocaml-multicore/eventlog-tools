@@ -1,0 +1,4 @@
+(test
+ (name test)
+ (libraries eventlog fmt rresult bos alcotest junit_alcotest)
+ (deps (source_tree assets)))
