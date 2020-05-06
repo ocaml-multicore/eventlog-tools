@@ -19,8 +19,13 @@ type event = {
 
 type endianness = Be | Le
 
+type trace_header = {
+  endianness : endianness;
+  ocaml_trace_version : int;
+}
+
 type packet =
-    Header of endianness
+    Header of trace_header
   | Event of event
 
 let string_of_phase i = Consts.phase.(i)

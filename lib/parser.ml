@@ -7,12 +7,9 @@ let magic_be = BE.int32 0xc1fc1fc1l >>= fun () -> return Be
 let magic_le = LE.int32 0xc1fc1fc1l >>= fun () -> return Le
 
 let caml_trace_version e =
-  let f =
-    match e with
-    | Le -> LE.int16
-    | Be -> BE.int16
-  in
-  f 0x1
+  match e with
+  | Le -> LE.any_int16
+  | Be -> BE.any_int16
 
 let stream_id e =
   let f =
@@ -84,9 +81,12 @@ let parse_magic : endianness t = magic_be <|> magic_le
 
 let parse_header =
   parse_magic >>= fun endianness ->
-  caml_trace_version endianness *> stream_id endianness >>= fun () ->
-  return (Header endianness)
-
+  caml_trace_version endianness >>= fun ocaml_trace_version ->
+  if ocaml_trace_version != 0x1 then
+    fail (Printf.sprintf "invalid ocaml_trace_version: %d" ocaml_trace_version)
+  else 
+    stream_id endianness >>= fun () ->
+    return (Header { endianness; ocaml_trace_version; })
               
 type decoder = {
   mutable buffer : Bigstringaf.t;
@@ -103,7 +103,7 @@ let rec decode d =
     d.off <- d.off + i;
     begin
       match v with
-      | Header endianness ->
+      | Header { endianness; _ } ->
         d.parser <- parse_event endianness;
       | _ -> ()
     end;
