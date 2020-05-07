@@ -8,8 +8,6 @@ let check (name, fn) = name, `Quick, (fun () -> Alcotest.check t name (Ok ()) (f
 let test_parser = List.map check Test_parser.tests
 
 let () =
-  Junit_alcotest.run_and_report "eventlog-tools" [
+  Alcotest.run "eventlog-tools" [
     "test_parser", test_parser;
   ]
-  |> fun (r, _) ->
-  Junit.(to_file (make [r]) "alcotest-junit.xml")
