@@ -79,11 +79,44 @@ let read_event { Eventlog.payload; timestamp; _ } ({ allocs; events; counters; _
     t.flushs <- duration::t.flushs; 
     Events.handle_flush events timestamp duration
 
+
+(* pretty-printing and output *)
+
+(* borrowed from https://github.com/ocaml/ocaml/blob/trunk/utils/misc.ml#L780 *)
+let pp_two_columns ?max_lines ppf (lines: (string * string) list) =
+  let left_column_size =
+    List.fold_left (fun acc (s, _) -> max acc (String.length s)) 0 lines in
+  let lines_nb = List.length lines in
+  let ellipsed_first, ellipsed_last =
+    match max_lines with
+    | Some max_lines when lines_nb > max_lines ->
+        let printed_lines = max_lines - 1 in (* the ellipsis uses one line *)
+        let lines_before = printed_lines / 2 + printed_lines mod 2 in
+        let lines_after = printed_lines / 2 in
+        (lines_before, lines_nb - lines_after - 1)
+    | _ -> (-1, -1)
+  in
+  Format.fprintf ppf "@[<v>";
+  List.iteri (fun k (line_l, line_r) ->
+    if k = ellipsed_first then Format.fprintf ppf "...@,";
+    if ellipsed_first <= k && k <= ellipsed_last then ()
+    else Format.fprintf ppf "%*s: %s@," left_column_size line_l line_r
+  ) lines;
+  Format.fprintf ppf "@]";
+  print_endline ""
+
+
+let cons' a l = List.cons l a
+    
 let print_allocs allocs =
-  print_endline "==== allocs";
-  Hashtbl.iter begin fun bucket count ->
-    Printf.printf "%s:\t\t%d\n" (Eventlog.string_of_alloc_bucket bucket) count
-  end allocs 
+  print_endline "==== allocs\n";
+  let l =
+    Hashtbl.fold begin fun bucket count acc ->
+      (Printf.sprintf "%s" (Eventlog.string_of_alloc_bucket bucket), Printf.sprintf "%d" count)
+      |> cons' acc
+    end allocs [] 
+  in
+  pp_two_columns Format.std_formatter l
 
 let pprint_time ns =
   if ns < 1000. then
@@ -128,23 +161,24 @@ let make_bins max =
   
 let print_histogram name l pprint =
   let open Owl_base_stats in
+  Printf.printf "==== %s\n" name;
   let arr = l |> Array.of_list |> Array.map float_of_int in
   let bins = make_bins (max arr) in
   let h = histogram bins arr in
-  Printf.printf "==== %s:\t\t\t%d\n" name (Array.length arr);
+  let l = ref [] in
   for i = 0 to (Array.length h.bins - 2) do
     if h.counts.(i) > 0 then
-      Printf.printf "%s..%s:\t\t\t%d\n" (pprint h.bins.(i)) (pprint h.bins.(i + 1)) h.counts.(i);
+          l := (Printf.sprintf "%s..%s" (pprint h.bins.(i)) (pprint h.bins.(i + 1)),
+               Printf.sprintf "%d" h.counts.(i))::!l 
   done;
-  print_endline "====";
-  ()
+  pp_two_columns Format.std_formatter !l
 
 let print_events_stats name events =
   match Events.get events name with
   | exception Not_found -> ()
   | events -> print_histogram (Eventlog.string_of_phase name) events pprint_time
 
-let print_flushs flushs =
+let print_flushes flushs =
   let a = Array.of_list flushs |> Array.map float_of_int in
   let median = Owl_base_stats.median a in
   let total = Owl_base_stats.sum a in
@@ -183,8 +217,8 @@ let main in_file =
   aux () >>= fun () ->
   print_allocs allocs;
   Events.iter events (fun phase _ -> print_events_stats phase events);
-  Hashtbl.iter (fun name l -> print_histogram (Eventlog.string_of_gc_counter name) l pprint_quantity) counters;
-  print_flushs t.flushs;
+  Hashtbl.iter (fun s l -> print_histogram (Eventlog.string_of_gc_counter s) l pprint_quantity) counters;
+  print_flushes t.flushs;
   Ok ()
   
 module Args = struct
