@@ -210,7 +210,7 @@ let main in_file =
       read_event ev t;
       aux ()
     | `Ok Header _ -> aux ()
-    | `Error (`Msg msg) -> print_endline msg; Error (`Msg msg)
+    | `Error (`Msg msg) -> Printf.eprintf "some events were discarded: %s" msg; Ok ()
     | `End -> Ok ()
     | `Await -> Ok ()
   in

@@ -112,8 +112,14 @@ let rec decode d =
   | Fail (_,_,msg) ->
     if d.complete = Unbuffered.Complete && d.off == d.len then
       `End
-    else 
-      `Error (`Msg msg)
+    else begin
+      let err =
+        Printf.sprintf
+        "Failure parsing record at offset: %d with total length: %d: %s"
+        d.off d.len msg
+      in
+      `Error (`Msg err)
+    end
   | Partial { committed; continue; } ->
     d.off <- d.off + committed;
     d.state <- continue d.buffer ~off:d.off ~len:(d.len - d.off) d.complete;

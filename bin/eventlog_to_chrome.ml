@@ -81,7 +81,7 @@ let main in_file out_file =
         encode_event encoder ev;
         aux ()
       | `Ok _ -> aux ()
-      | `Error (`Msg msg) -> print_endline msg; Error (`Msg msg)
+      | `Error (`Msg msg) -> Printf.eprintf "some events were discarded: %s" msg; Ok ()
       | `End -> Ok ()
       | `Await -> Ok ()
     in
