@@ -19,10 +19,10 @@ module Events = struct
           (v_end - v_start) - (snd t.last_flush)
         else
           (v_end - v_start)
-      in 
+      in
       Hashtbl.replace t.events name (v::l)
     | None -> Hashtbl.add t.events name [v_end - v_start]
-                
+
   let handle_exit ({ h; _ } as t) name v =
     match Hashtbl.find_opt h name with
     | Some v' -> if v' > v then assert false else
@@ -30,12 +30,12 @@ module Events = struct
           Hashtbl.remove h name;
           update t name v' v
         end;
-    | None -> failwith "no attached entry event" 
+    | None -> ()
 
   let handle_entry { h;_ } name v =
     match Hashtbl.find_opt h name with
-    | Some _ -> failwith "overlaping entry events"
-    | None -> Hashtbl.add h name v 
+    | Some _ -> ()
+    | None -> Hashtbl.add h name v
 
   let handle_flush t ts dur = t.last_flush <- ts, dur
 
@@ -48,21 +48,21 @@ module Events = struct
   let get { events; _ } name = Hashtbl.find events name
 
   let iter t f = Hashtbl.iter f t.events
-      
-end 
+
+end
 
 type allocs = (Eventlog.bucket, int) Hashtbl.t
 type counters = (Eventlog.counter_kind, int list) Hashtbl.t
-    
+
 type t = {
   events : Events.t;
   allocs : allocs;
   counters : counters;
   mutable flushs : int list;
 }
-         
+
 let read_event { Eventlog.payload; timestamp; _ } ({ allocs; events; counters; _ } as t) =
-  match payload with 
+  match payload with
   | Alloc { bucket; count; } -> begin
     match Hashtbl.find_opt allocs bucket with
     | Some v -> Hashtbl.replace allocs bucket (v + count)
@@ -74,9 +74,9 @@ let read_event { Eventlog.payload; timestamp; _ } ({ allocs; events; counters; _
      match Hashtbl.find_opt counters kind with
      | Some l -> Hashtbl.replace counters kind (count::l)
      | None -> Hashtbl.add counters kind [count]
-  end 
+  end
   | Flush {duration; } ->
-    t.flushs <- duration::t.flushs; 
+    t.flushs <- duration::t.flushs;
     Events.handle_flush events timestamp duration
 
 
@@ -107,14 +107,14 @@ let pp_two_columns ?max_lines ppf (lines: (string * string) list) =
 
 
 let cons' a l = List.cons l a
-    
+
 let print_allocs allocs =
   print_endline "==== allocs\n";
   let l =
     Hashtbl.fold begin fun bucket count acc ->
       (Printf.sprintf "%s" (Eventlog.string_of_alloc_bucket bucket), Printf.sprintf "%d" count)
       |> cons' acc
-    end allocs [] 
+    end allocs []
   in
   pp_two_columns Format.std_formatter l
 
@@ -125,7 +125,7 @@ let pprint_time ns =
     Printf.sprintf "%.1fus" (ns /. 1_000.)
   else if ns < (1_000_000_000.) then
     Printf.sprintf "%.1fms" (ns /. 1_000_000.)
-  else 
+  else
     Printf.sprintf "%.1fs" (ns /. 1_000_000_000.)
 
 let pprint_quantity q =
@@ -133,7 +133,7 @@ let pprint_quantity q =
     Printf.sprintf "%.0f" q
   else if q < (1_000_000.) then
     Printf.sprintf "%.1fK" (q /. 1_000.)
-  else 
+  else
     Printf.sprintf "%.1fM" (q /. 1_000_000.)
 
 let bins mul =
@@ -149,7 +149,7 @@ let default_bins = Array.concat [
     bins 100000.;
     bins 1000000.;
   ]
-    
+
 let make_bins max =
   let max_in_default_bins = Array.get default_bins (Array.length default_bins - 1) in
   let bins = Array.concat [
@@ -158,7 +158,7 @@ let make_bins max =
   ]
   in
   `Bins bins
-  
+
 let print_histogram name l pprint =
   let open Owl_base_stats in
   Printf.printf "==== %s\n" name;
@@ -169,7 +169,7 @@ let print_histogram name l pprint =
   for i = 0 to (Array.length h.bins - 2) do
     if h.counts.(i) > 0 then
           l := (Printf.sprintf "%s..%s" (pprint h.bins.(i)) (pprint h.bins.(i + 1)),
-               Printf.sprintf "%d" h.counts.(i))::!l 
+               Printf.sprintf "%d" h.counts.(i))::!l
   done;
   pp_two_columns Format.std_formatter !l
 
@@ -186,7 +186,7 @@ let print_flushes flushs =
   Printf.printf "median flush time: %s\n" (pprint_time median);
   Printf.printf "total flush time: %s\n" (pprint_time total);
   Printf.printf "flush count: %d\n" (List.length flushs)
-  
+
 let load_file path =
   let open Rresult.R.Infix in
   Fpath.of_string path
@@ -220,7 +220,7 @@ let main in_file =
   Hashtbl.iter (fun s l -> print_histogram (Eventlog.string_of_gc_counter s) l pprint_quantity) counters;
   print_flushes t.flushs;
   Ok ()
-  
+
 module Args = struct
   open Cmdliner
 
