@@ -1,6 +1,6 @@
 (** caml_trace_version 0x1 *)
 
-let phase = [| 
+let phase = [|
   "compact/main";
   "compact/recompact";
   "explicit/gc_set";
@@ -31,6 +31,75 @@ let phase = [|
   "minor/copy";
   "minor/update_weak";
   "minor/finalized";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
+  "explicit/gc_major_slice";
   "explicit/gc_major_slice";
 |]
 
