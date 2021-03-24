@@ -1,9 +1,9 @@
 module R = Rresult.R
-             
+
 open Angstrom
 open Types
 
-let magic_be = BE.int32 0xc1fc1fc1l >>= fun () -> return Be    
+let magic_be = BE.int32 0xc1fc1fc1l >>= fun () -> return Be
 let magic_le = LE.int32 0xc1fc1fc1l >>= fun () -> return Le
 
 let caml_trace_version e =
@@ -24,77 +24,88 @@ let (>>?) v f =
   | Ok v -> f v
   | Error `Msg msg -> fail msg
 
+
 let parse_event e =
   let int32 = match e with Be -> BE.int32 | Le -> LE.int32 in
   let any_int16 = match e with Be -> BE.any_int16 | Le -> LE.any_int16 in
   let any_int32 = match e with Be -> BE.any_int32 | Le -> LE.any_int32 in
   let any_int64 = match e with Be -> BE.any_int64 | Le -> LE.any_int64 in
+  let event_context =
+    any_int32 >>= fun pid ->
+    any_int8 >>= fun is_bt ->
+    return (pid, is_bt)
+  in
+  let parse_event_type i = int32 i >>= fun () -> event_context  <|> (fail (Printf.sprintf "smh 0x%lx" i)) in
   let entry_event =
-    int32 0x0l
-    *> any_int16 >>= fun i ->
+    parse_event_type 0x0l
+    >>= fun ctx ->
+    any_int16 >>= fun i ->
     phase_of_int i >>? fun phase ->
-    return (Entry { phase; }) 
+    return (ctx, (Entry { phase; }))
   in
   let exit_event =
-    int32 0x1l
-    *> any_int16 >>= fun i ->
+    parse_event_type 0x1l
+    >>= fun ctx ->
+    any_int16 >>= fun i ->
     phase_of_int i >>? fun phase ->
-    return (Exit { phase; })
+    return (ctx, (Exit { phase; }))
   in
   let counter_event =
-    int32 0x2l *>
+    parse_event_type 0x2l
+    >>= fun ctx ->
     any_int64 >>= fun count ->
     any_int16 >>= fun i ->
     gc_counter_of_int i >>? fun kind ->
-    return (Counter { count = Int64.to_int count; kind; })
-  in 
+    return (ctx, (Counter { count = Int64.to_int count; kind; }))
+  in
   let alloc_event =
-    int32 0x3l *>
+    parse_event_type 0x3l
+    >>= fun ctx ->
     any_int64 >>= fun count ->
     any_int8 >>= fun i ->
     alloc_bucket_of_int i >>? fun bucket ->
-    return (Alloc { count = Int64.to_int count; bucket; })
+    return (ctx, (Alloc { count = Int64.to_int count; bucket; }))
   in
   let flush_event =
-    int32 0x4l
-    *> any_int64 >>= fun duration ->
-    return (Flush { duration = Int64.to_int duration; })
+    parse_event_type 0x4l
+    >>= fun ctx ->
+    any_int64 >>= fun duration ->
+    return (ctx, (Flush { duration = Int64.to_int duration; }))
   in
   let event_header =
     any_int64 >>= fun timestamp ->
-    any_int32 >>= fun pid ->
-    return (timestamp, pid)
+    return (timestamp)
   in
   let event_parser =
     entry_event
-    <|> exit_event 
-    <|> alloc_event 
-    <|> counter_event 
+    <|> exit_event
+    <|> alloc_event
+    <|> counter_event
     <|> flush_event
-  in 
-  event_header >>= fun (timestamp, pid) ->
-  event_parser >>= fun payload ->
-  Event {payload; timestamp = Int64.to_int timestamp; pid = Int32.to_int pid; }
+  in
+  event_header >>= fun timestamp ->
+  event_parser >>= fun (context, payload) ->
+  Event {payload; timestamp = Int64.to_int timestamp; pid = Int32.to_int (fst context); }
   |> return
-  
-let parse_magic : endianness t = magic_be <|> magic_le  
+
+let parse_magic : endianness t = magic_be <|> magic_le
 
 let parse_header =
   parse_magic >>= fun endianness ->
   caml_trace_version endianness >>= fun ocaml_trace_version ->
   if ocaml_trace_version != 0x1 then
     fail (Printf.sprintf "invalid ocaml_trace_version: %d" ocaml_trace_version)
-  else 
+  else
     stream_id endianness >>= fun () ->
     return (Header { endianness; ocaml_trace_version; })
-              
+
 type decoder = {
   mutable buffer : Bigstringaf.t;
   mutable off : int;
   mutable len : int;
   mutable state : packet Unbuffered.state;
   mutable complete : Unbuffered.more;
-  mutable parser : packet t; 
+  mutable parser : packet t;
 }
 
 let rec decode d =
@@ -109,7 +120,8 @@ let rec decode d =
     end;
     d.state <- Unbuffered.parse d.parser;
     `Ok v
-  | Fail (_,_,msg) ->
+  | Fail (i,_,msg) ->
+    d.off <- d.off + i;
     if d.complete = Unbuffered.Complete && d.off == d.len then
       `End
     else begin
@@ -133,15 +145,15 @@ let decoder () =
   let off = 0x0 in
   let parser = parse_header in
   let state = Unbuffered.parse parse_header in
-  let complete = Unbuffered.Incomplete in 
+  let complete = Unbuffered.Incomplete in
   { buffer; len; off; state; complete; parser; }
 
 let src d src src_off src_len complete =
   let uncommited = d.len - d.off in
   let dst_len = (src_len + uncommited) in
   let dst = Bigstringaf.create dst_len in
-  Bigstringaf.blit d.buffer ~src_off:d.off dst ~dst_off:0 ~len:uncommited; 
-  Bigstringaf.blit src ~src_off dst ~dst_off:uncommited ~len:src_len; 
+  Bigstringaf.blit d.buffer ~src_off:d.off dst ~dst_off:0 ~len:uncommited;
+  Bigstringaf.blit src ~src_off dst ~dst_off:uncommited ~len:src_len;
   d.buffer <- dst;
   d.off <- 0;
   d.len <- dst_len;
