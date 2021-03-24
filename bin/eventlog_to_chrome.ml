@@ -1,15 +1,18 @@
 open Rresult.R.Infix
 open Eventlog
-    
+
+let load_dir path =
+  Fpath.of_string path
+  >>= Bos.OS.Dir.contents
+
 let load_file path =
   let open Rresult.R.Infix in
-  Fpath.of_string path
-  >>= Bos.OS.File.read
+  Bos.OS.File.read path
   >>= fun content ->
   Ok (Bigstringaf.of_string ~off:0 ~len:(String.length content) content)
 
-let enc e l = Jsonm.encode e l |> ignore 
-                                                                              
+let enc e l = Jsonm.encode e l |> ignore
+
 let os = `Lexeme `Os
 let oe = `Lexeme `Oe
 let as_ = `Lexeme `As
@@ -17,7 +20,7 @@ let ae = `Lexeme `Ae
 let name s = `Lexeme (`Name s)
 let string s = `Lexeme (`String s)
 let number f = `Lexeme (`Float (float_of_int f))
-    
+
 let enc_name_value e n v =
   enc e n;
   enc e v
@@ -32,11 +35,11 @@ let encode_catapult_prelude e =
 let encode_event e { timestamp; pid; payload; } =
   let ts = Printf.sprintf "%d.%03d" (timestamp / 1000) (timestamp mod 1000) in
   enc e os;
-  enc_name_value e (name "ts") (string ts); 
-  enc_name_value e (name "pid") (number pid); 
-  enc_name_value e (name "tid") (number pid); 
-  enc e (name "ph"); 
-  begin match payload with 
+  enc_name_value e (name "ts") (string ts);
+  enc_name_value e (name "pid") (number pid);
+  enc_name_value e (name "tid") (number pid);
+  enc e (name "ph");
+  begin match payload with
   | Entry { phase; } ->
     enc e (string "B");
     enc_name_value e (name "name") (string (string_of_phase phase))
@@ -47,7 +50,7 @@ let encode_event e { timestamp; pid; payload; } =
     let dur = Printf.sprintf "%d.%03d" (duration / 1000) (duration mod 1000) in
     enc e (string "X");
     enc_name_value e (name "name") (string "eventlog/flush");
-    enc_name_value e (name "dur") (string dur); 
+    enc_name_value e (name "dur") (string dur);
   | Alloc { bucket; count; } ->
     enc e (string "C");
     enc_name_value e (name "name") (string (string_of_alloc_bucket bucket));
@@ -65,46 +68,51 @@ let encode_event e { timestamp; pid; payload; } =
   end;
   enc e oe
 
-    
-let main in_file out_file =
+let traverse file_in encoder =
   let module P = Eventlog.Parser in
-  load_file in_file >>= fun data ->
+  load_file file_in >>= fun data ->
   let decoder = P.decoder () in
   let total_len = Bigstringaf.length data in
   P.src decoder data 0 total_len true;
-  let convert oc () =
-    let encoder = Jsonm.encoder (`Channel oc) in
-    encode_catapult_prelude encoder;
+  let convert () =
     let rec aux () =
       match P.decode decoder with
       | `Ok Event ev ->
         encode_event encoder ev;
         aux ()
       | `Ok _ -> aux ()
-      | `Error (`Msg msg) -> Printf.eprintf "some events were discarded: %s" msg; Ok ()
+      | `Error (`Msg msg) -> Printf.eprintf "[%s] some events were discarded: %s\n" (Fpath.to_string file_in) msg; Ok ()
       | `End -> Ok ()
       | `Await -> Ok ()
     in
-    aux () >>= fun () ->
+    aux ()
+  in
+  convert ()
+
+let main in_dir out_file =
+  Fpath.of_string out_file >>= fun out_file ->
+  Bos.OS.File.with_oc out_file begin fun out () ->
+    let encoder = Jsonm.encoder (`Channel out) in
+    encode_catapult_prelude encoder;
+    load_dir in_dir >>= fun tracedir ->
+    (List.fold_left
+       (fun err f -> if Result.is_error err then err else traverse f encoder)
+       (Result.ok ()) tracedir) >>= fun () ->
     enc encoder ae;
     enc encoder oe;
     enc encoder `End;
     Ok ()
-  in 
-  Fpath.of_string out_file  >>= fun out_file ->
-  match Bos.OS.File.with_oc out_file convert () with
-  | Error (`Msg s) -> Error (`Msg s)
-  | o -> o
+  end ()
 
 module Args = struct
 
   open Cmdliner
 
-  let trace =
-    let doc = "input OCaml CTF trace" in
+  let tracedir =
+    let doc = "input OCaml CTF trace dir" in
     Arg.(required & pos 0 (some string) None  & info [] ~doc )
 
-  let outfile = 
+  let outfile =
     let doc = "output JSON file" in
     Arg.(required & pos 1 (some string) None  & info [] ~doc )
 
@@ -120,4 +128,4 @@ end
 
 let () =
   let open Cmdliner in
-  Term.exit @@ Term.eval Term.(const main  $ Args.trace $ Args.outfile, Args.info)
+  Term.exit @@ Term.eval Term.(const main  $ Args.tracedir $ Args.outfile, Args.info)
