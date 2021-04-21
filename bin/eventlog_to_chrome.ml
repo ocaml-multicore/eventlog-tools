@@ -1,6 +1,14 @@
 open Rresult.R.Infix
 open Eventlog
 
+module PSet = Set.Make(Int)
+
+type state = {
+  errored : bool;
+  encoder : Jsonm.encoder;
+  pset : PSet.t; (* set of pids encountered, for metadata *)
+}
+
 let load_dir path =
   Fpath.of_string path
   >>= Bos.OS.Dir.contents
@@ -32,7 +40,34 @@ let encode_catapult_prelude e =
   enc e (name "traceEvents");
   enc e as_
 
-let encode_event e { timestamp; pid; payload; } =
+let encode_thread_metadata ~is_backup_thread pid e =
+  let process_name =
+    if is_backup_thread then
+      Printf.sprintf "BackupThread%d" pid
+    else
+      Printf.sprintf "Domain%d" pid
+  in
+  enc e os;
+  enc_name_value e (name "ph") (string "M");
+  enc_name_value e (name "name") (string "thread_name");
+  enc_name_value e (name "pid") (number pid);
+  enc_name_value e (name "tid") (number pid);
+  enc e (name "args");
+  enc e os;
+  enc_name_value e (name "name") (string process_name);
+  enc e oe;
+  enc e oe
+
+let encode_event ({ encoder=e; pset; _ } as state) { is_backup_thread; timestamp; pid; payload; } =
+  let pid = if is_backup_thread then pid + 1 else pid in
+  let state =
+    if PSet.exists ((=) pid) pset then
+      state
+    else
+      let pset = PSet.add pid pset in
+      encode_thread_metadata ~is_backup_thread pid e;
+      { state with pset; }
+  in
   let ts = Printf.sprintf "%d.%03d" (timestamp / 1000) (timestamp mod 1000) in
   enc e os;
   enc_name_value e (name "ts") (string ts);
@@ -66,43 +101,56 @@ let encode_event e { timestamp; pid; payload; } =
     enc_name_value e (name "value") (number count);
     enc e oe
   end;
-  enc e oe
+  enc e oe;
+  state
 
-let traverse file_in encoder =
+let traverse state file_in =
   let module P = Eventlog.Parser in
-  load_file file_in >>= fun data ->
+  match load_file file_in with
+  | Error `Msg err ->
+    Printf.eprintf "[%s] %s\n" (Fpath.to_string file_in) err;
+    { state with errored = true; }
+  | Ok data ->
   let decoder = P.decoder () in
   let total_len = Bigstringaf.length data in
   P.src decoder data 0 total_len true;
-  let convert () =
-    let rec aux () =
+  let convert state =
+    let rec aux state =
       match P.decode decoder with
       | `Ok Event ev ->
-        encode_event encoder ev;
-        aux ()
-      | `Ok _ -> aux ()
-      | `Error (`Msg msg) -> Printf.eprintf "[%s] some events were discarded: %s\n" (Fpath.to_string file_in) msg; Ok ()
-      | `End -> Ok ()
-      | `Await -> Ok ()
+        let state = encode_event state ev in
+        aux state
+      | `Ok _ -> aux state
+      | `Error (`Msg msg) ->
+        Printf.eprintf "[%s] some events were discarded: %s\n" (Fpath.to_string file_in) msg;
+        { state with errored = true; }
+      | `End -> state
+      | `Await -> state
     in
-    aux ()
+    aux state
   in
-  convert ()
+  convert state
 
 let main in_dir out_file =
-  Fpath.of_string out_file >>= fun out_file ->
-  Bos.OS.File.with_oc out_file begin fun out () ->
+  let aux out () =
     let encoder = Jsonm.encoder (`Channel out) in
     encode_catapult_prelude encoder;
+    let state = { pset = PSet.empty; encoder; errored = false; } in
     load_dir in_dir >>= fun tracedir ->
-    (List.fold_left
-       (fun err f -> if Result.is_error err then err else traverse f encoder)
-       (Result.ok ()) tracedir) >>= fun () ->
+    let state = List.fold_left traverse state tracedir in
     enc encoder ae;
     enc encoder oe;
     enc encoder `End;
-    Ok ()
-  end ()
+    match state.errored with
+    | false -> Ok ()
+    | true -> Error (`Msg "Some errors were encountered during processing.")
+  in
+  match out_file with
+  | None -> aux stdout ()
+  | Some out_file ->
+    Fpath.of_string out_file >>= fun out ->
+    Bos.OS.File.with_oc out aux ()
+    |> Result.join
 
 module Args = struct
 
@@ -113,9 +161,8 @@ module Args = struct
     Arg.(required & pos 0 (some string) None  & info [] ~doc )
 
   let outfile =
-    let doc = "output JSON file" in
-    Arg.(required & pos 1 (some string) None  & info [] ~doc )
-
+    let doc = "output JSON file (default to stdout)" in
+    Arg.(value & opt (some string) None & info ["o"; "output"] ~docv:"COUNT" ~doc)
   let info =
     let doc = "" in
     let man = [

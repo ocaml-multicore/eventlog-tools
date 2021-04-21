@@ -85,7 +85,8 @@ let parse_event e =
   in
   event_header >>= fun timestamp ->
   event_parser >>= fun (context, payload) ->
-  Event {payload; timestamp = Int64.to_int timestamp; pid = Int32.to_int (fst context); }
+  let is_backup_thread = (snd context) != 0 in
+  Event {payload; is_backup_thread; timestamp = Int64.to_int timestamp; pid = Int32.to_int (fst context); }
   |> return
 
 let parse_magic : endianness t = magic_be <|> magic_le
