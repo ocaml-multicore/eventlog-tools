@@ -1,5 +1,5 @@
 module R = Rresult.R
-           
+
 type phase = int
 type bucket = int
 type counter_kind = int
@@ -12,6 +12,7 @@ type event_payload =
   | Flush of { duration : int; }
 
 type event = {
+  is_backup_thread : bool;
   payload : event_payload;
   timestamp : int;
   pid : int;

@@ -187,23 +187,22 @@ let print_flushes flushs =
   Printf.printf "total flush time: %s\n" (pprint_time total);
   Printf.printf "flush count: %d\n" (List.length flushs)
 
+let load_dir path =
+  Fpath.of_string path
+  >>= Bos.OS.Dir.contents
+
 let load_file path =
   let open Rresult.R.Infix in
-  Fpath.of_string path
-  >>= Bos.OS.File.read
+  Bos.OS.File.read path
   >>= fun content ->
   Ok (Bigstringaf.of_string ~off:0 ~len:(String.length content) content)
 
-let main in_file =
+let traverse f t =
   let module P = Eventlog.Parser in
-  load_file in_file >>= fun data ->
+  load_file f >>= fun data ->
   let decoder = P.decoder () in
   let total_len = Bigstringaf.length data in
   P.src decoder data 0 total_len true;
-  let allocs = Hashtbl.create 10 in
-  let events = Events.create () in
-  let counters = Hashtbl.create 10 in
-  let t = { allocs; events; flushs = []; counters; } in
   let rec aux () =
     match P.decode decoder with
     | `Ok Event ev ->
@@ -214,7 +213,19 @@ let main in_file =
     | `End -> Ok ()
     | `Await -> Ok ()
   in
-  aux () >>= fun () ->
+  aux ()
+
+
+let main in_dir =
+  let allocs = Hashtbl.create 10 in
+  let events = Events.create () in
+  let counters = Hashtbl.create 10 in
+  let t = { allocs; events; flushs = []; counters; } in
+  load_dir in_dir >>= fun tracedir ->
+  (List.fold_left
+     (fun err f -> if Result.is_error err then err else traverse f t)
+     (Result.ok ()) tracedir)
+  >>= fun () ->
   print_allocs allocs;
   Events.iter events (fun phase _ -> print_events_stats phase events);
   Hashtbl.iter (fun s l -> print_histogram (Eventlog.string_of_gc_counter s) l pprint_quantity) counters;
@@ -225,7 +236,7 @@ module Args = struct
   open Cmdliner
 
   let trace =
-    let doc = "Print a basic report from an OCaml eventlog file" in
+    let doc = "input OCaml CTF trace dir" in
     Arg.(required & pos 0 (some string) None  & info [] ~doc )
 
   let info =
