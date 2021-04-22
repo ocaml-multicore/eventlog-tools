@@ -9,15 +9,29 @@ type state = {
   pset : PSet.t; (* set of pids encountered, for metadata *)
 }
 
-let load_dir path =
-  Fpath.of_string path
-  >>= Bos.OS.Dir.contents
+let load_as_dir path =
+  Fpath.of_string path >>= fun path ->
+  match Bos.OS.File.exists path with
+  | Ok true -> Ok [ path ]
+  | Ok false -> Bos.OS.Dir.contents path
+  | Error err -> Error err
 
 let load_file path =
   let open Rresult.R.Infix in
   Bos.OS.File.read path
   >>= fun content ->
   Ok (Bigstringaf.of_string ~off:0 ~len:(String.length content) content)
+
+let load paths =
+  let rec aux l acc =
+    match l with
+    | [] -> Ok acc
+    | path::xs ->
+      match load_as_dir path with
+      | Ok res -> aux xs (res::acc)
+      | Error err -> Error err
+  in
+  aux paths [] |> Result.map List.flatten
 
 let enc e l = Jsonm.encode e l |> ignore
 
@@ -131,12 +145,12 @@ let traverse state file_in =
   in
   convert state
 
-let main in_dir out_file =
+let main out_file src_in =
   let aux out () =
     let encoder = Jsonm.encoder (`Channel out) in
     encode_catapult_prelude encoder;
     let state = { pset = PSet.empty; encoder; errored = false; } in
-    load_dir in_dir >>= fun tracedir ->
+    load src_in >>= fun tracedir ->
     let state = List.fold_left traverse state tracedir in
     enc encoder ae;
     enc encoder oe;
@@ -149,7 +163,7 @@ let main in_dir out_file =
   | None -> aux stdout ()
   | Some out_file ->
     Fpath.of_string out_file >>= fun out ->
-    Printf.printf "Will write to file: %s\n" (Fpath.to_string out);
+    Printf.printf "Writing to file: %s\n" (Fpath.to_string out); flush stdout;
     Bos.OS.File.with_oc out aux ()
     |> Result.join
 
@@ -158,12 +172,11 @@ module Args = struct
   open Cmdliner
 
   let tracedir =
-    let doc = "input OCaml CTF trace dir" in
-    Arg.(required & pos 0 (some string) None  & info [] ~doc )
-
+    let doc = "source" in
+    Arg.(non_empty & pos_all string [] & info [] ~docv:"SOURCE" ~doc)
   let outfile =
     let doc = "output JSON file (default to stdout)" in
-    Arg.(value & opt (some string) None & info ["o"; "output"] ~docv:"COUNT" ~doc)
+    Arg.(value & opt (some string) None & info ["o"; "output"] ~docv:"OUTPUT" ~doc)
   let info =
     let doc = "" in
     let man = [
@@ -176,4 +189,4 @@ end
 
 let () =
   let open Cmdliner in
-  Term.exit @@ Term.eval Term.(const main  $ Args.tracedir $ Args.outfile, Args.info)
+  Term.exit @@ Term.eval Term.(const main $ Args.outfile $ Args.tracedir, Args.info)
