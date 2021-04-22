@@ -57,7 +57,7 @@ let encode_catapult_prelude e =
 let encode_thread_metadata ~is_backup_thread pid e =
   let process_name =
     if is_backup_thread then
-      Printf.sprintf "BackupThread%d" pid
+      Printf.sprintf "BackupThread%d" (pid - 1) (* BT is domain's pid + 1 *)
     else
       Printf.sprintf "Domain%d" pid
   in
