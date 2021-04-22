@@ -149,6 +149,7 @@ let main in_dir out_file =
   | None -> aux stdout ()
   | Some out_file ->
     Fpath.of_string out_file >>= fun out ->
+    Printf.printf "Will write to file: %s\n" (Fpath.to_string out);
     Bos.OS.File.with_oc out aux ()
     |> Result.join
 
