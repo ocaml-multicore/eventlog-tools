@@ -1,10 +1,4 @@
 (executable
- (name eventlog_report)
- (modules eventlog_report)
- (public_name ocaml-eventlog-report)
- (libraries cmdliner bos fpath rresult owl-base eventlog))
-
-(executable
  (name eventlog_to_chrome)
  (modules eventlog_to_chrome)
  (public_name ocaml-eventlog-to-chrome)
