@@ -8,7 +8,7 @@ and higher.
 
 You can install this package through OPAM.
 
-```
+```shell
 opam pin eventlog-tools .
 ```
 
@@ -39,7 +39,7 @@ let () =
 ```
 
 To enable instrumentation while compiling this program, you need to use the `-runtime-variant=i` flag.
-```
+```shell
 ocamlopt -runtime-variant=i program.ml -o program.exe
 ```
 This can also be achieved with `dune` using the `flag` stanza:
@@ -51,13 +51,13 @@ This can also be achieved with `dune` using the `flag` stanza:
 ```
 
 To run, and enable tracing in the freshly compiled program, do as follow:
-```
+```shell
 OCAML_EVENTLOG_ENABLED=1 ./program.exe
 ```
 
 Which will create new files in the running directory, named `caml-$pid-$domain_id.eventlog`. where `$pid` is the initial pid of the program, and $domain_id represents the domain id
 of each domains started by the program.
-```
+```shell
 ●●●● ls
 caml-180445-0.eventlog caml-180445-2.eventlog caml-180445-4.eventlog  program.cmi  program.cmx  program.exe*  program.ml  program.o
 ```
@@ -65,7 +65,7 @@ caml-180445-0.eventlog caml-180445-2.eventlog caml-180445-4.eventlog  program.cm
 Note that the `OCAML_EVENTLOG_PREFIX` environment variable can also be used to prefix the generated filenames.
 For instances, if you have a subdir `trace`, you can use `OCAML_EVENTLOG_PREFIX=trace/prefix` to tell the runtime
 to generate the files in this directory, prefixing these by `trace/prefix`
-```
+```shell
 ●●●● OCAML_EVENTLOG_ENABLED=1 OCAML_EVENTLOG_PREFIX=test_trace/prefix ./a.out
 wait OK
 sleep OK
@@ -77,7 +77,7 @@ We can now read this file using the tools provided by this package.
 
 ### `ocaml-eventlog-to-chrome`
 This tool allows to convert a tool from OCaml's CTF schema to the Catapult format used by the Google Chrome's trace viewing utility, `chrome:/tracing`.
-```
+```shell
 ●●●● ocaml-eventlog-to-chrome test_trace/ -o out.json
      # alternatively, you can pass as an argument a single tracefile, or many tracefiles (like caml-eventlog-*)
 ●●●● ocaml-eventlog-to-chrome test_trace/prefix-caml-* -o out.json
