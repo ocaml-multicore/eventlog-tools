@@ -155,17 +155,22 @@ let main out_file src_in =
     enc encoder ae;
     enc encoder oe;
     enc encoder `End;
-    match state.errored with
-    | false -> Ok ()
-    | true -> Error (`Msg "Some errors were encountered during processing.")
+    Ok state
   in
-  match out_file with
-  | None -> aux stdout ()
-  | Some out_file ->
-    Fpath.of_string out_file >>= fun out ->
-    Printf.printf "Writing to file: %s\n" (Fpath.to_string out); flush stdout;
-    Bos.OS.File.with_oc out aux ()
-    |> Result.join
+  let res =
+    match out_file with
+    | None -> aux stdout ()
+    | Some out_file ->
+       Fpath.of_string out_file >>= fun out ->
+       Printf.printf "Writing to file: %s\n" (Fpath.to_string out); flush stdout;
+       Bos.OS.File.with_oc out aux ()
+       |> Result.join
+  in
+  match res with
+  | Error err -> Error err
+  | Ok { errored = true; _ } -> Error (`Msg "Some errors were encountered during processing.")
+  | _ -> Ok ()
+
 
 module Args = struct
 
