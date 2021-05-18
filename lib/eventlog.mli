@@ -30,6 +30,7 @@ type packet =
 val string_of_gc_counter : counter_kind -> string
 val string_of_alloc_bucket : bucket -> string
 val string_of_phase : phase -> string
+val phase_of_string : string -> phase
 
 module Parser : sig
 

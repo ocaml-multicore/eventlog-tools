@@ -39,4 +39,5 @@ depends: [
   "fpath"
   "bos"
   "owl-base"
+  "interval-map"
 ]
