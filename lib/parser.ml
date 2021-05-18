@@ -158,4 +158,4 @@ let src d src src_off src_len complete =
   d.buffer <- dst;
   d.off <- 0;
   d.len <- dst_len;
-  d.complete <- if complete then Unbuffered.Complete else Unbuffered.Incomplete;
+  d.complete <- if complete then Unbuffered.Complete else Unbuffered.Incomplete
