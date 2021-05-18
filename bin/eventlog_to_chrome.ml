@@ -1,5 +1,6 @@
 open Rresult.R.Infix
 open Eventlog
+open Bin_common
 
 module PSet = Set.Make(Int)
 
@@ -8,30 +9,6 @@ type state = {
   encoder : Jsonm.encoder;
   pset : PSet.t; (* set of pids encountered, for metadata *)
 }
-
-let load_as_dir path =
-  Fpath.of_string path >>= fun path ->
-  match Bos.OS.File.exists path with
-  | Ok true -> Ok [ path ]
-  | Ok false -> Bos.OS.Dir.contents path
-  | Error err -> Error err
-
-let load_file path =
-  let open Rresult.R.Infix in
-  Bos.OS.File.read path
-  >>= fun content ->
-  Ok (Bigstringaf.of_string ~off:0 ~len:(String.length content) content)
-
-let load paths =
-  let rec aux l acc =
-    match l with
-    | [] -> Ok acc
-    | path::xs ->
-      match load_as_dir path with
-      | Ok res -> aux xs (res::acc)
-      | Error err -> Error err
-  in
-  aux paths [] |> Result.map List.flatten
 
 let enc e l = Jsonm.encode e l |> ignore
 
@@ -120,7 +97,7 @@ let encode_event ({ encoder=e; pset; _ } as state) { is_backup_thread; timestamp
 
 let traverse state file_in =
   let module P = Eventlog.Parser in
-  match load_file file_in with
+  match Common.load_file file_in with
   | Error `Msg err ->
     Printf.eprintf "[%s] %s\n" (Fpath.to_string file_in) err;
     { state with errored = true; }
@@ -150,7 +127,7 @@ let main out_file src_in =
     let encoder = Jsonm.encoder (`Channel out) in
     encode_catapult_prelude encoder;
     let state = { pset = PSet.empty; encoder; errored = false; } in
-    load src_in >>= fun tracedir ->
+    Common.load src_in >>= fun tracedir ->
     let state = List.fold_left traverse state tracedir in
     enc encoder ae;
     enc encoder oe;
