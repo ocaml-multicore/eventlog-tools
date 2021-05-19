@@ -113,7 +113,7 @@ let process_trees state =
           let (_, entry, ex, overhead) = List.hd v in ((ex - entry) - overhead) ::l else l
       ) itv []
   in
-  latencies::acc_latencies, itv::acc_itvs
+  List.rev_append latencies acc_latencies, itv::acc_itvs
   end state.trees ([], [])
 
 let print_json ~name ~max_latency ~mean_latency distribution =
@@ -139,7 +139,7 @@ let process_latencies name state =
   ] in
   let latencies, _ = process_trees state in
   let sorted_latencies =
-    List.sort Int.compare (List.concat latencies)
+    List.sort Int.compare (latencies)
     |> Array.of_list
     |> Array.map float_of_int
   in
