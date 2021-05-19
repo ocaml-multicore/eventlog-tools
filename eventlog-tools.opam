@@ -27,12 +27,9 @@ build: [
 ]
 
 depends: [
-  "ocaml"      {>= "4.11.0"}
-  "dune"       {>= "2.7"}
-  "alcotest"   {with-test}
-  "base-bytes"
-  "base-bigarray"
-  "base-unix"
+  "ocaml"      {>= "4.09.0"}
+  "dune"       {build}
+  "alcotest"   {test}
   "bigstringaf"
   "angstrom"
   "rresult"
