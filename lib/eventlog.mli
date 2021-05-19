@@ -44,6 +44,4 @@ val decode : decoder -> [> `Await
 
 val src : decoder -> Bigstringaf.t -> int -> int -> bool -> unit
 
-val parse_event : endianness -> packet Angstrom.t
-
 end
