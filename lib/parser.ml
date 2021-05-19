@@ -88,7 +88,7 @@ let parse_magic : endianness t = magic_be <|> magic_le
 let parse_header =
   parse_magic >>= fun endianness ->
   caml_trace_version endianness >>= fun ocaml_trace_version ->
-  if ocaml_trace_version != 0x1 then
+  if ocaml_trace_version != 0x1 && ocaml_trace_version != 0x1337 then
     fail (Printf.sprintf "invalid ocaml_trace_version: %d" ocaml_trace_version)
   else
     stream_id endianness >>= fun () ->
