@@ -67,7 +67,10 @@ let encode_event state ev =
     end
   | Flush { duration; } ->
      let key = ev.pid, ev.pid in
-     let stack = Hashtbl.find state.stacks key in
+     let stack = Hashtbl.find_opt state.stacks key in
+     (match stack with
+     | None -> state
+     | Some stack ->
      if Stack.is_empty stack then
        state (* standalone flush, no overhead to propagate *)
      else
@@ -75,7 +78,7 @@ let encode_event state ev =
        Stack.fold (fun acc e -> { e with overhead = e.overhead + duration; }::acc) [] stack
        |> List.iter (fun e -> (Stack.push e stack'));
        Hashtbl.replace state.stacks key stack';
-       state
+       state)
   | _ -> state
 
 let finish_marking = phase_of_string "major/finish_marking"
@@ -140,7 +143,10 @@ let process_latencies name state =
     |> Array.of_list
     |> Array.map float_of_int
   in
-  let max_latency = sorted_latencies.(Array.length sorted_latencies - 1) in
+  let sorted_len = Array.length sorted_latencies in
+  let max_latency =
+    if sorted_len = 0 then 0. else sorted_latencies.(Array.length sorted_latencies - 1)
+  in
   let mean_latency = Owl_base.Stats.mean sorted_latencies in
   let distribution = List.map (Owl_base.Stats.percentile sorted_latencies) percentages in
   print_json ~name ~max_latency ~mean_latency distribution
