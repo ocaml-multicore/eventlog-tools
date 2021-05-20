@@ -58,7 +58,7 @@ let parse_event e trace_version =
   let parse_event_header =
     any_int64 >>= fun timestamp ->
     (match trace_version with
-    | `Version 0x654321 (* multicore *) ->
+    | `Version 0x100 (* multicore *) ->
       any_int32 >>= fun event_type ->
       any_int32 >>= fun pid ->
       any_int8 >>= fun is_bt ->
@@ -88,7 +88,7 @@ let parse_magic : endianness t = magic_be <|> magic_le
 let parse_header =
   parse_magic >>= fun endianness ->
   caml_trace_version endianness >>= fun ocaml_trace_version ->
-  if ocaml_trace_version != 0x1 && ocaml_trace_version != 0x654321 then
+  if ocaml_trace_version != 0x1 && ocaml_trace_version != 0x100 then
     fail (Printf.sprintf "invalid ocaml_trace_version: %d" ocaml_trace_version)
   else
     stream_id endianness >>= fun () ->
