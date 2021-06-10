@@ -20,13 +20,12 @@ Google Chrome's Catapult format.
 build: [
   [ "dune" "subst" ]
   [ "dune" "build" "-p" name "-j" jobs ]
-  [ "dune" "runtest" "-p" name "-j" jobs ] {with-test}
 ]
 
 depends: [
-  "ocaml"      {>= "4.09.0"}
-  "dune"       {build}
-  "alcotest"   {test}
+  "ocaml"      {>= "4.11.0"}
+  "dune"       {>= "2.7"}
+  "alcotest"   {with-test}
   "base-bytes"
   "base-bigarray"
   "base-unix"
