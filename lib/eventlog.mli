@@ -30,6 +30,7 @@ type packet =
 val string_of_gc_counter : counter_kind -> string
 val string_of_alloc_bucket : bucket -> string
 val string_of_phase : phase -> string
+val phase_of_string : string -> phase
 
 module Parser : sig
 
@@ -42,7 +43,5 @@ val decode : decoder -> [> `Await
                         | `Error of [> `Msg of string ] | `Ok of packet ]
 
 val src : decoder -> Bigstringaf.t -> int -> int -> bool -> unit
-
-val parse_event : endianness -> packet Angstrom.t
 
 end

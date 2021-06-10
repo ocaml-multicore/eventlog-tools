@@ -34,3 +34,5 @@ val string_of_phase : phase -> string
 val gc_counter_of_int : int -> (counter_kind, [> Rresult.R.msg ]) result
 val alloc_bucket_of_int : int -> (bucket, [> Rresult.R.msg ]) result
 val phase_of_int : int -> (phase, [> Rresult.R.msg ]) result
+
+val phase_of_string : string -> phase

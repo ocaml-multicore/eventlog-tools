@@ -25,68 +25,68 @@ let (>>?) v f =
   | Error `Msg msg -> fail msg
 
 
-let parse_event e =
-  let int32 = match e with Be -> BE.int32 | Le -> LE.int32 in
+let parse_event e trace_version =
   let any_int16 = match e with Be -> BE.any_int16 | Le -> LE.any_int16 in
   let any_int32 = match e with Be -> BE.any_int32 | Le -> LE.any_int32 in
   let any_int64 = match e with Be -> BE.any_int64 | Le -> LE.any_int64 in
-  let event_context =
-    any_int32 >>= fun pid ->
-    any_int8 >>= fun is_bt ->
-    return (pid, is_bt)
-  in
-  let parse_event_type i = int32 i >>= fun () -> event_context  <|> (fail (Printf.sprintf "smh 0x%lx" i)) in
   let entry_event =
-    parse_event_type 0x0l
-    >>= fun ctx ->
     any_int16 >>= fun i ->
     phase_of_int i >>? fun phase ->
-    return (ctx, (Entry { phase; }))
+    return (Entry { phase; })
   in
   let exit_event =
-    parse_event_type 0x1l
-    >>= fun ctx ->
     any_int16 >>= fun i ->
     phase_of_int i >>? fun phase ->
-    return (ctx, (Exit { phase; }))
+    return (Exit { phase; })
   in
   let counter_event =
-    parse_event_type 0x2l
-    >>= fun ctx ->
     any_int64 >>= fun count ->
     any_int16 >>= fun i ->
     gc_counter_of_int i >>? fun kind ->
-    return (ctx, (Counter { count = Int64.to_int count; kind; }))
+    return (Counter { count = Int64.to_int count; kind; })
   in
   let alloc_event =
-    parse_event_type 0x3l
-    >>= fun ctx ->
     any_int64 >>= fun count ->
     any_int8 >>= fun i ->
     alloc_bucket_of_int i >>? fun bucket ->
-    return (ctx, (Alloc { count = Int64.to_int count; bucket; }))
+    return (Alloc { count = Int64.to_int count; bucket; })
   in
   let flush_event =
-    parse_event_type 0x4l
-    >>= fun ctx ->
     any_int64 >>= fun duration ->
-    return (ctx, (Flush { duration = Int64.to_int duration; }))
+    return (Flush { duration = Int64.to_int duration; })
   in
-  let event_header =
+  let parse_event_header =
     any_int64 >>= fun timestamp ->
-    return (timestamp)
+    (match trace_version with
+    | `Version 0x100 (* multicore *) ->
+      any_int32 >>= fun event_type ->
+      any_int32 >>= fun pid ->
+      any_int8 >>= fun is_bt ->
+      return (event_type, pid, is_bt != 0)
+    | `Version 0x1 (* current trunk *) ->
+      any_int32 >>= fun pid ->
+      any_int32 >>= fun event_type ->
+      return (event_type, pid, false)
+    | _ -> assert false)
+    >>= fun (event_type, pid, is_bt) ->
+    return (timestamp, event_type, pid, is_bt)
   in
-  let event_parser =
-    entry_event
-    <|> exit_event
-    <|> alloc_event
-    <|> counter_event
-    <|> flush_event
-  in
-  event_header >>= fun timestamp ->
-  event_parser >>= fun (context, payload) ->
-  let is_backup_thread = (snd context) != 0 in
-  Event {payload; is_backup_thread; timestamp = Int64.to_int timestamp; pid = Int32.to_int (fst context); }
+  parse_event_header >>= fun (timestamp, event_type, pid, is_bt) -> begin
+  match event_type with
+  | 0x0l -> entry_event
+  | 0x1l -> exit_event
+  | 0x2l -> counter_event
+  | 0x3l -> alloc_event
+  | 0x4l -> flush_event
+  | i ->
+     let already_decoded =
+       Printf.sprintf "ts = %Ld; pid = %ld; is_bt = %b" timestamp pid is_bt
+     in
+     let msg = Printf.sprintf "invalid event_type 0x%lxd (%s)" i already_decoded in
+     fail msg
+  end
+  >>= fun (payload) ->
+  Event {payload; is_backup_thread = is_bt; timestamp = Int64.to_int timestamp; pid = Int32.to_int pid; }
   |> return
 
 let parse_magic : endianness t = magic_be <|> magic_le
@@ -94,7 +94,7 @@ let parse_magic : endianness t = magic_be <|> magic_le
 let parse_header =
   parse_magic >>= fun endianness ->
   caml_trace_version endianness >>= fun ocaml_trace_version ->
-  if ocaml_trace_version != 0x1 then
+  if ocaml_trace_version != 0x1 && ocaml_trace_version != 0x100 then
     fail (Printf.sprintf "invalid ocaml_trace_version: %d" ocaml_trace_version)
   else
     stream_id endianness >>= fun () ->
@@ -107,6 +107,7 @@ type decoder = {
   mutable state : packet Unbuffered.state;
   mutable complete : Unbuffered.more;
   mutable parser : packet t;
+  mutable version : [ `Unconfigured | `Version of int ];
 }
 
 let rec decode d =
@@ -115,8 +116,8 @@ let rec decode d =
     d.off <- d.off + i;
     begin
       match v with
-      | Header { endianness; _ } ->
-        d.parser <- parse_event endianness;
+      | Header { endianness; ocaml_trace_version; _ } ->
+        d.parser <- parse_event endianness (`Version ocaml_trace_version);
       | _ -> ()
     end;
     d.state <- Unbuffered.parse d.parser;
@@ -145,9 +146,10 @@ let decoder () =
   let len = 0x0 in
   let off = 0x0 in
   let parser = parse_header in
+  let version = `Unconfigured in
   let state = Unbuffered.parse parse_header in
   let complete = Unbuffered.Incomplete in
-  { buffer; len; off; state; complete; parser; }
+  { buffer; len; off; state; complete; parser; version; }
 
 let src d src src_off src_len complete =
   let uncommited = d.len - d.off in
@@ -158,4 +160,4 @@ let src d src src_off src_len complete =
   d.buffer <- dst;
   d.off <- 0;
   d.len <- dst_len;
-  d.complete <- if complete then Unbuffered.Complete else Unbuffered.Incomplete;
+  d.complete <- if complete then Unbuffered.Complete else Unbuffered.Incomplete
