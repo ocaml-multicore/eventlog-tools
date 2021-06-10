@@ -71,14 +71,20 @@ let parse_event e trace_version =
     >>= fun (event_type, pid, is_bt) ->
     return (timestamp, event_type, pid, is_bt)
   in
-  parse_event_header >>= fun (timestamp, event_type, pid, is_bt) ->
-  (match event_type with
+  parse_event_header >>= fun (timestamp, event_type, pid, is_bt) -> begin
+  match event_type with
   | 0x0l -> entry_event
   | 0x1l -> exit_event
   | 0x2l -> counter_event
   | 0x3l -> alloc_event
   | 0x4l -> flush_event
-  | i -> fail (Printf.sprintf "invalid event_type 0x%lxd" i))
+  | i ->
+     let already_decoded =
+       Printf.sprintf "ts = %Ld; pid = %ld; is_bt = %b" timestamp pid is_bt
+     in
+     let msg = Printf.sprintf "invalid event_type 0x%lxd (%s)" i already_decoded in
+     fail msg
+  end
   >>= fun (payload) ->
   Event {payload; is_backup_thread = is_bt; timestamp = Int64.to_int timestamp; pid = Int32.to_int pid; }
   |> return
