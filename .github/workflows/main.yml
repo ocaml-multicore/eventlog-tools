@@ -28,6 +28,8 @@ jobs:
 
       - run: opam pin add eventlog-tools.dev . --no-action
 
+      - run: opam depext eventlog-tools --yes --with-doc --with-test
+
       - run: opam install . --deps-only --with-doc --with-test
 
       - run: opam exec -- dune build
