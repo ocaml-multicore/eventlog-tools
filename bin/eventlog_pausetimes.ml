@@ -118,12 +118,8 @@ let process_trees state =
 
 let print_json ~name ~max_latency ~mean_latency distribution =
   Printf.printf
-{|{
-  "name": "%s",
-  "mean_latency": %d,
-  "max_latency": %d,
-  "distr_latency": [%s]
-}|}
+{|{"name": "%s", "mean_latency": %d, "max_latency": %d, "distr_latency": [%s] }
+|}
     name
     (int_of_float mean_latency)
     (int_of_float max_latency)
