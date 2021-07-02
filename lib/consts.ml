@@ -58,7 +58,8 @@ let phase = [|
   "minor/finalizers_admin";
   "minor/remembered_set";
   "minor/remembered_set_promote";
-  "minor/local_roots_promote"
+  "minor/local_roots_promote";
+  "domain/condition_wait"
 |]
 
 let gc_counter = [|
