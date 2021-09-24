@@ -1,8 +1,11 @@
 name: Main workflow
 
 on:
-  - pull_request
-  - push
+  pull_request:
+  push:
+  schedule:
+    # Prime the caches every Monday
+    - cron: 0 1 * * MON
 
 jobs:
   build:
@@ -10,10 +13,23 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - macos-latest
           - ubuntu-latest
-        ocaml-version:
-          - 4.12.0
+          - macos-latest
+        ocaml-compiler:
+          - 4.12.x
+        include:
+          - os: ubuntu-latest
+            ocaml-compiler: ocaml-variants.4.12.0+domains
+            dune-cache: false
+            opam-repositories: |
+              multicore: https://github.com/ocaml-multicore/multicore-opam.git
+              default: https://github.com/ocaml/opam-repository.git
+          - os: ubuntu-latest
+            ocaml-compiler: ocaml-variants.4.12.0+domains+effects
+            dune-cache: false
+            opam-repositories: |
+              multicore: https://github.com/ocaml-multicore/multicore-opam.git
+              default: https://github.com/ocaml/opam-repository.git
 
     runs-on: ${{ matrix.os }}
 
@@ -21,16 +37,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Use OCaml ${{ matrix.ocaml-version }}
-        uses: avsm/setup-ocaml@v1
+      - name: Use OCaml ${{ matrix.ocaml-compiler }}
+        uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-version: ${{ matrix.ocaml-version }}
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          opam-depext-flags: --with-test
+          opam-repositories: ${{ matrix.opam-repositories }}
 
-      - run: opam pin add eventlog-tools.dev . --no-action
-
-      - run: opam depext eventlog-tools --yes --with-doc --with-test
-
-      - run: opam install . --deps-only --with-doc --with-test
+      - run: opam install . --deps-only --with-test
 
       - run: opam exec -- dune build
 
