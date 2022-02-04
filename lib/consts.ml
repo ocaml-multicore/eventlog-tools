@@ -40,6 +40,7 @@ let gc_counter = [|
   "force_minor/make_vect";
   "force_minor/set_minor_heap_size";
   "force_minor/weak";
+  "force_minor/memprof";
   "major/mark/slice/remain";
   "major/mark/slice/fields";
   "major/mark/slice/pointers";
