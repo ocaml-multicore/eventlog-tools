@@ -235,7 +235,7 @@ module Args = struct
       `S Manpage.s_bugs;
     ]
     in
-    Term.info "ocaml-eventlog-pausetimes" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
+    Term.info "ocaml-eventlog-report" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
 
 end
 
