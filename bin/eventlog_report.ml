@@ -1,4 +1,8 @@
 open Rresult.R.Infix
+open Bin_common
+
+type allocs = (Eventlog.bucket, int) Hashtbl.t
+type counters = (Eventlog.counter_kind, int list) Hashtbl.t
 
 module Events = struct
 
@@ -50,9 +54,6 @@ module Events = struct
   let iter t f = Hashtbl.iter f t.events
 
 end
-
-type allocs = (Eventlog.bucket, int) Hashtbl.t
-type counters = (Eventlog.counter_kind, int list) Hashtbl.t
 
 type t = {
   events : Events.t;
@@ -187,19 +188,10 @@ let print_flushes flushs =
   Printf.printf "total flush time: %s\n" (pprint_time total);
   Printf.printf "flush count: %d\n" (List.length flushs)
 
-let load_dir path =
-  Fpath.of_string path
-  >>= Bos.OS.Dir.contents
-
-let load_file path =
-  let open Rresult.R.Infix in
-  Bos.OS.File.read path
-  >>= fun content ->
-  Ok (Bigstringaf.of_string ~off:0 ~len:(String.length content) content)
-
+(* file traversing gluing everything together *)
 let traverse f t =
   let module P = Eventlog.Parser in
-  load_file f >>= fun data ->
+  Common.load_file f >>= fun data ->
   let decoder = P.decoder () in
   let total_len = Bigstringaf.length data in
   P.src decoder data 0 total_len true;
@@ -215,13 +207,12 @@ let traverse f t =
   in
   aux ()
 
-
 let main in_dir =
   let allocs = Hashtbl.create 10 in
   let events = Events.create () in
   let counters = Hashtbl.create 10 in
   let t = { allocs; events; flushs = []; counters; } in
-  load_dir in_dir >>= fun tracedir ->
+  Common.load [in_dir] >>= fun tracedir ->
   (List.fold_left
      (fun err f -> if Result.is_error err then err else traverse f t)
      (Result.ok ()) tracedir)
@@ -233,6 +224,14 @@ let main in_dir =
   Ok ()
 
 module Args = struct
+  type t = {
+    events : Events.t;
+    allocs : allocs;
+    counters : counters;
+    mutable flushs : int list;
+  }
+
+
   open Cmdliner
 
   let trace =

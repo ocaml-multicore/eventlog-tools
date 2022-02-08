@@ -9,3 +9,9 @@
  (modules eventlog_pausetimes)
  (public_name ocaml-eventlog-pausetimes)
  (libraries bin_common cmdliner bos fpath rresult jsonm interval-map owl-base eventlog))
+
+(executable
+ (name eventlog_report)
+ (modules eventlog_report)
+ (public_name ocaml-eventlog-report)
+ (libraries bin_common cmdliner bos fpath rresult owl-base eventlog))
