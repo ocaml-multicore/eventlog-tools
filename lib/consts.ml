@@ -1,29 +1,29 @@
 (** caml_trace_version 0x1 *)
 
-let phase = [| 
+let phase = [|
   "compact/main";
   "compact/recompact";
-  "explicit/gc_set";
-  "explicit/gc_stat";
-  "explicit/gc_minor";
-  "explicit/gc_major";
-  "explicit/gc_full_major";
-  "explicit/gc_compact";
+  "explicit_gc/set";
+  "explicit_gc/stat";
+  "explicit_gc/minor";
+  "explicit_gc/major";
+  "explicit_gc/full_major";
+  "explicit_gc/compact";
   "major";
   "major/roots";
   "major/sweep";
-  "major/mark/roots";
-  "major/mark/main";
-  "major/mark/final";
+  "major/mark_roots";
+  "major/mark_main";
+  "major/mark_final";
   "major/mark";
-  "major/mark/global_roots_slice";
-  "major_roots/global";
-  "major_roots/dynamic_global";
-  "major_roots/local";
-  "major_roots/C";
-  "major_roots/finalised";
-  "major_roots/memprof";
-  "major_roots/hook";
+  "major/mark_global_roots_slice";
+  "major/roots_global";
+  "major/roots_dynamic_global";
+  "major/roots_local";
+  "major/roots_c";
+  "major/roots_finalised";
+  "major/roots_memprof";
+  "major/roots_hook";
   "major/check_and_compact";
   "minor";
   "minor/local_roots";
@@ -31,7 +31,35 @@ let phase = [|
   "minor/copy";
   "minor/update_weak";
   "minor/finalized";
-  "explicit/gc_major_slice";
+  "explicit_gc/major_slice";
+  "domain/spawn";
+  "domain/send_interrupt";
+  "domain/idle_wait";
+  "finalise_update_first";
+  "finalise_update_last";
+  "interrupt/gc";
+  "interrupt/remote";
+  "major/ephe_mark";
+  "major/ephe_sweep";
+  "major/finish_marking";
+  "major/cycle_domains";
+  "major/phase_change";
+  "major/stw";
+  "major/mark_opportunistic";
+  "major/slice";
+  "minor/clear";
+  "minor/finalizers_oldify";
+  "minor/global_roots";
+  "minor/leave_barrier";
+  "stw/api_barrier";
+  "stw/handler";
+  "stw/leader";
+  "major/finish_sweeping";
+  "minor/finalizers_admin";
+  "minor/remembered_set";
+  "minor/remembered_set_promote";
+  "minor/local_roots_promote";
+  "domain/condition_wait"
 |]
 
 let gc_counter = [|

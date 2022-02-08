@@ -28,11 +28,9 @@ build: [
 
 depends: [
   "ocaml"      {>= "4.11.0"}
-  "dune"       {>= "2.7"}
+  "dune"       {build}
   "alcotest"   {with-test}
-  "base-bytes"
-  "base-bigarray"
-  "base-unix"
+  "crowbar"    {with-test}
   "bigstringaf"
   "angstrom"
   "rresult"
@@ -42,4 +40,5 @@ depends: [
   "fpath"
   "bos"
   "owl-base"
+  "interval-map"
 ]

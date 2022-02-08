@@ -1,0 +1,3 @@
+(library
+ (name bin_common)
+ (libraries fpath bos rresult bigstringaf))

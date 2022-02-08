@@ -2,3 +2,24 @@
  (name test)
  (libraries eventlog fmt rresult bos alcotest)
  (deps (source_tree assets)))
+
+(rule
+ (with-stdout-to 4.11.1.output (run ../bin/eventlog_report.exe reference/4.11.1.reference )))
+
+(rule
+ (alias runtest)
+ (action (diff 4.11.1.expected 4.11.1.output)))
+
+(rule
+ (with-stdout-to 4.12.1.output (run ../bin/eventlog_report.exe reference/4.12.1.reference )))
+
+(rule
+ (alias runtest)
+ (action (diff 4.12.1.expected 4.12.1.output)))
+
+(rule
+ (with-stdout-to 4.13.1.output (run ../bin/eventlog_report.exe reference/4.13.1.reference )))
+
+(rule
+ (alias runtest)
+ (action (diff 4.13.1.expected 4.13.1.output)))

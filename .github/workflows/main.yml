@@ -16,21 +16,7 @@ jobs:
           - ubuntu-latest
           - macos-latest
         ocaml-compiler:
-          - 4.12.x
-        include:
-          - os: ubuntu-latest
-            ocaml-compiler: ocaml-variants.4.12.0+domains
-            dune-cache: false
-            opam-repositories: |
-              multicore: https://github.com/ocaml-multicore/multicore-opam.git
-              default: https://github.com/ocaml/opam-repository.git
-          - os: ubuntu-latest
-            ocaml-compiler: ocaml-variants.4.12.0+domains+effects
-            dune-cache: false
-            opam-repositories: |
-              multicore: https://github.com/ocaml-multicore/multicore-opam.git
-              default: https://github.com/ocaml/opam-repository.git
-
+          - 4.13.x
     runs-on: ${{ matrix.os }}
 
     steps:

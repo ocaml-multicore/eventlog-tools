@@ -1,5 +1,5 @@
 module R = Rresult.R
-           
+
 type phase = int
 type bucket = int
 type counter_kind = int
@@ -12,6 +12,7 @@ type event_payload =
   | Flush of { duration : int; }
 
 type event = {
+  is_backup_thread : bool;
   payload : event_payload;
   timestamp : int;
   pid : int;
@@ -31,6 +32,13 @@ type packet =
 let string_of_phase i = Consts.phase.(i)
 let string_of_gc_counter i = Consts.gc_counter.(i)
 let string_of_alloc_bucket i = Consts.alloc_bucket.(i)
+
+let phase_of_string s : phase =
+  let rec aux i =
+    if i > (Array.length Consts.phase) - 1 then raise Not_found;
+    if String.equal Consts.phase.(i) s then i else aux (i + 1)
+  in
+  aux 0
 
 let phase_of_int i =
   if i < Array.length Consts.phase then

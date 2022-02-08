@@ -1,4 +1,8 @@
 open Rresult.R.Infix
+open Bin_common
+
+type allocs = (Eventlog.bucket, int) Hashtbl.t
+type counters = (Eventlog.counter_kind, int list) Hashtbl.t
 
 module Events = struct
 
@@ -19,10 +23,10 @@ module Events = struct
           (v_end - v_start) - (snd t.last_flush)
         else
           (v_end - v_start)
-      in 
+      in
       Hashtbl.replace t.events name (v::l)
     | None -> Hashtbl.add t.events name [v_end - v_start]
-                
+
   let handle_exit ({ h; _ } as t) name v =
     match Hashtbl.find_opt h name with
     | Some v' -> if v' > v then assert false else
@@ -30,12 +34,12 @@ module Events = struct
           Hashtbl.remove h name;
           update t name v' v
         end;
-    | None -> failwith "no attached entry event" 
+    | None -> ()
 
   let handle_entry { h;_ } name v =
     match Hashtbl.find_opt h name with
-    | Some _ -> failwith "overlaping entry events"
-    | None -> Hashtbl.add h name v 
+    | Some _ -> ()
+    | None -> Hashtbl.add h name v
 
   let handle_flush t ts dur = t.last_flush <- ts, dur
 
@@ -48,21 +52,18 @@ module Events = struct
   let get { events; _ } name = Hashtbl.find events name
 
   let iter t f = Hashtbl.iter f t.events
-      
-end 
 
-type allocs = (Eventlog.bucket, int) Hashtbl.t
-type counters = (Eventlog.counter_kind, int list) Hashtbl.t
-    
+end
+
 type t = {
   events : Events.t;
   allocs : allocs;
   counters : counters;
   mutable flushs : int list;
 }
-         
+
 let read_event { Eventlog.payload; timestamp; _ } ({ allocs; events; counters; _ } as t) =
-  match payload with 
+  match payload with
   | Alloc { bucket; count; } -> begin
     match Hashtbl.find_opt allocs bucket with
     | Some v -> Hashtbl.replace allocs bucket (v + count)
@@ -74,16 +75,16 @@ let read_event { Eventlog.payload; timestamp; _ } ({ allocs; events; counters; _
      match Hashtbl.find_opt counters kind with
      | Some l -> Hashtbl.replace counters kind (count::l)
      | None -> Hashtbl.add counters kind [count]
-  end 
+  end
   | Flush {duration; } ->
-    t.flushs <- duration::t.flushs; 
+    t.flushs <- duration::t.flushs;
     Events.handle_flush events timestamp duration
 
 
 (* pretty-printing and output *)
 
 (* borrowed from https://github.com/ocaml/ocaml/blob/trunk/utils/misc.ml#L780 *)
-let pp_two_columns ?max_lines ppf (lines: (string * string) list) =
+let pp_two_columns ?max_lines ppf name (lines: (string * string) list) =
   let left_column_size =
     List.fold_left (fun acc (s, _) -> max acc (String.length s)) 0 lines in
   let lines_nb = List.length lines in
@@ -97,26 +98,25 @@ let pp_two_columns ?max_lines ppf (lines: (string * string) list) =
     | _ -> (-1, -1)
   in
   Format.fprintf ppf "@[<v>";
+  Format.fprintf ppf "==== %s\n" name;
   List.iteri (fun k (line_l, line_r) ->
     if k = ellipsed_first then Format.fprintf ppf "...@,";
     if ellipsed_first <= k && k <= ellipsed_last then ()
     else Format.fprintf ppf "%*s: %s@," left_column_size line_l line_r
   ) lines;
-  Format.fprintf ppf "@]";
-  print_endline ""
+  Format.fprintf ppf "@]"
 
 
 let cons' a l = List.cons l a
-    
+
 let print_allocs allocs =
-  print_endline "==== allocs\n";
   let l =
     Hashtbl.fold begin fun bucket count acc ->
       (Printf.sprintf "%s" (Eventlog.string_of_alloc_bucket bucket), Printf.sprintf "%d" count)
       |> cons' acc
-    end allocs [] 
+    end allocs []
   in
-  pp_two_columns Format.std_formatter l
+  pp_two_columns Format.std_formatter "allocs" l
 
 let pprint_time ns =
   if ns < 1000. then
@@ -125,7 +125,7 @@ let pprint_time ns =
     Printf.sprintf "%.1fus" (ns /. 1_000.)
   else if ns < (1_000_000_000.) then
     Printf.sprintf "%.1fms" (ns /. 1_000_000.)
-  else 
+  else
     Printf.sprintf "%.1fs" (ns /. 1_000_000_000.)
 
 let pprint_quantity q =
@@ -133,7 +133,7 @@ let pprint_quantity q =
     Printf.sprintf "%.0f" q
   else if q < (1_000_000.) then
     Printf.sprintf "%.1fK" (q /. 1_000.)
-  else 
+  else
     Printf.sprintf "%.1fM" (q /. 1_000_000.)
 
 let bins mul =
@@ -149,19 +149,18 @@ let default_bins = Array.concat [
     bins 100000.;
     bins 1000000.;
   ]
-    
+
 let make_bins max =
   let max_in_default_bins = Array.get default_bins (Array.length default_bins - 1) in
   let bins = Array.concat [
-      default_bins;
+    default_bins;
     if max > max_in_default_bins then [|max|] else [||];
   ]
   in
   `Bins bins
-  
+
 let print_histogram name l pprint =
   let open Owl_base_stats in
-  Printf.printf "==== %s\n" name;
   let arr = l |> Array.of_list |> Array.map float_of_int in
   let bins = make_bins (max arr) in
   let h = histogram bins arr in
@@ -169,9 +168,9 @@ let print_histogram name l pprint =
   for i = 0 to (Array.length h.bins - 2) do
     if h.counts.(i) > 0 then
           l := (Printf.sprintf "%s..%s" (pprint h.bins.(i)) (pprint h.bins.(i + 1)),
-               Printf.sprintf "%d" h.counts.(i))::!l 
+               Printf.sprintf "%d" h.counts.(i))::!l
   done;
-  pp_two_columns Format.std_formatter !l
+  pp_two_columns Format.std_formatter name !l
 
 let print_events_stats name events =
   match Events.get events name with
@@ -182,28 +181,19 @@ let print_flushes flushs =
   let a = Array.of_list flushs |> Array.map float_of_int in
   let median = Owl_base_stats.median a in
   let total = Owl_base_stats.sum a in
-  Printf.printf "==== eventlog/flush\n";
-  Printf.printf "median flush time: %s\n" (pprint_time median);
-  Printf.printf "total flush time: %s\n" (pprint_time total);
-  Printf.printf "flush count: %d\n" (List.length flushs)
-  
-let load_file path =
-  let open Rresult.R.Infix in
-  Fpath.of_string path
-  >>= Bos.OS.File.read
-  >>= fun content ->
-  Ok (Bigstringaf.of_string ~off:0 ~len:(String.length content) content)
+  pp_two_columns Format.std_formatter  "eventlog/flush" [
+    "median flush time", (pprint_time median);
+    "total flush time", (pprint_time total);
+    "flush count", (List.length flushs |> string_of_int);
+  ]
 
-let main in_file =
+(* file traversing gluing everything together *)
+let traverse f t =
   let module P = Eventlog.Parser in
-  load_file in_file >>= fun data ->
+  Common.load_file f >>= fun data ->
   let decoder = P.decoder () in
   let total_len = Bigstringaf.length data in
   P.src decoder data 0 total_len true;
-  let allocs = Hashtbl.create 10 in
-  let events = Events.create () in
-  let counters = Hashtbl.create 10 in
-  let t = { allocs; events; flushs = []; counters; } in
   let rec aux () =
     match P.decode decoder with
     | `Ok Event ev ->
@@ -214,20 +204,31 @@ let main in_file =
     | `End -> Ok ()
     | `Await -> Ok ()
   in
-  aux () >>= fun () ->
+  aux ()
+
+let main src =
+  let allocs = Hashtbl.create 10 in
+  let events = Events.create () in
+  let counters = Hashtbl.create 10 in
+  let t = { allocs; events; flushs = []; counters; } in
+  Common.load src >>= fun tracedir ->
+  (List.fold_left
+     (fun err f -> if Result.is_error err then err else traverse f t)
+     (Result.ok ()) tracedir)
+  >>= fun () ->
   print_allocs allocs;
   Events.iter events (fun phase _ -> print_events_stats phase events);
   Hashtbl.iter (fun s l -> print_histogram (Eventlog.string_of_gc_counter s) l pprint_quantity) counters;
   print_flushes t.flushs;
   Ok ()
-  
+
 module Args = struct
+
   open Cmdliner
 
-  let trace =
-    let doc = "Print a basic report from an OCaml eventlog file" in
-    Arg.(required & pos 0 (some string) None  & info [] ~doc )
-
+  let srcs =
+     let doc = "Source file(s) to copy. You can also pass a directory as an argument and it will process all files within this directory." in
+     Arg.(non_empty & pos_all file [] & info [] ~docv:"SOURCE" ~doc)
   let info =
     let doc = "" in
     let man = [
@@ -240,4 +241,4 @@ end
 
 let () =
   let open Cmdliner in
-  Term.exit @@ Term.eval Term.(const main  $ Args.trace, Args.info)
+  Term.exit @@ Term.eval Term.(const main  $ Args.srcs, Args.info)

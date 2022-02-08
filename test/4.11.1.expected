@@ -1,0 +1,84 @@
+==== allocs
+alloc 02: 8
+alloc 01: 12
+alloc 05: 1
+alloc 06: 1
+alloc 08: 1
+alloc 03: 2
+==== explicit_gc/full_major
+100.0us..200.0us: 1
+==== major/roots_finalised
+100ns..200ns: 2
+  0ns..100ns: 3
+==== minor/finalized
+100ns..200ns: 1
+==== major/mark
+10.0us..20.0us: 1
+==== major/roots_memprof
+100ns..200ns: 3
+  0ns..100ns: 2
+==== major
+20.0us..30.0us: 1
+  3.0us..5.0us: 1
+  2.0us..3.0us: 1
+  1.0us..2.0us: 1
+==== minor
+10.0us..20.0us: 1
+  200ns..300ns: 1
+    0ns..100ns: 1
+==== major/mark_final
+500ns..1.0us: 1
+100ns..200ns: 1
+==== major/mark_main
+3.0us..5.0us: 1
+200ns..300ns: 1
+==== explicit_gc/minor
+10.0us..20.0us: 1
+==== major/roots
+1.0us..2.0us: 3
+==== compact/main
+10.0us..20.0us: 1
+==== major/mark_roots
+5.0us..10.0us: 2
+==== minor/local_roots
+10.0us..20.0us: 1
+==== compact/recompact
+30.0us..50.0us: 1
+==== minor/update_weak
+200ns..300ns: 1
+==== minor/ref_tables
+0ns..100ns: 1
+==== major/roots_dynamic_global
+5.0us..10.0us: 2
+ 100ns..200ns: 1
+   0ns..100ns: 2
+==== major/roots_c
+300ns..500ns: 2
+200ns..300ns: 3
+==== major/roots_local
+300ns..500ns: 2
+200ns..300ns: 1
+100ns..200ns: 2
+==== minor/copy
+500ns..1.0us: 1
+==== major/mark_global_roots_slice
+5.0us..10.0us: 2
+==== major/roots_hook
+0ns..100ns: 5
+==== major/mark/slice/pointers
+0..100: 2
+==== major/mark/slice/fields
+0..100: 2
+==== minor/promoted
+0..100: 1
+==== major/work/extra
+500.0K..1.0M: 1
+      0..100: 3
+==== alloc_jump
+0..100: 3
+==== major/work/mark
+100.0K..200.0K: 1
+==== eventlog/flush
+median flush time: 18.9us
+ total flush time: 18.9us
+      flush count: 1
