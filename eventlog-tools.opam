@@ -27,9 +27,10 @@ build: [
 ]
 
 depends: [
-  "ocaml"      {>= "4.09.0"}
+  "ocaml"      {>= "4.11.0"}
   "dune"       {build}
-  "alcotest"   {test}
+  "alcotest"   {with-test}
+  "crowbar"    {with-test}
   "bigstringaf"
   "angstrom"
   "rresult"
