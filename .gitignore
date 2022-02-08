@@ -1,0 +1,8 @@
+_build
+setup.data
+setup.log
+*.native
+*.byte
+_tests
+*.merlin
+*.install
