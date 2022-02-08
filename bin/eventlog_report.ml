@@ -84,7 +84,7 @@ let read_event { Eventlog.payload; timestamp; _ } ({ allocs; events; counters; _
 (* pretty-printing and output *)
 
 (* borrowed from https://github.com/ocaml/ocaml/blob/trunk/utils/misc.ml#L780 *)
-let pp_two_columns ?max_lines ppf (lines: (string * string) list) =
+let pp_two_columns ?max_lines ppf name (lines: (string * string) list) =
   let left_column_size =
     List.fold_left (fun acc (s, _) -> max acc (String.length s)) 0 lines in
   let lines_nb = List.length lines in
@@ -98,26 +98,25 @@ let pp_two_columns ?max_lines ppf (lines: (string * string) list) =
     | _ -> (-1, -1)
   in
   Format.fprintf ppf "@[<v>";
+  Format.fprintf ppf "==== %s\n" name;
   List.iteri (fun k (line_l, line_r) ->
     if k = ellipsed_first then Format.fprintf ppf "...@,";
     if ellipsed_first <= k && k <= ellipsed_last then ()
     else Format.fprintf ppf "%*s: %s@," left_column_size line_l line_r
   ) lines;
-  Format.fprintf ppf "@]";
-  print_endline ""
+  Format.fprintf ppf "@]"
 
 
 let cons' a l = List.cons l a
 
 let print_allocs allocs =
-  print_endline "==== allocs\n";
   let l =
     Hashtbl.fold begin fun bucket count acc ->
       (Printf.sprintf "%s" (Eventlog.string_of_alloc_bucket bucket), Printf.sprintf "%d" count)
       |> cons' acc
     end allocs []
   in
-  pp_two_columns Format.std_formatter l
+  pp_two_columns Format.std_formatter "allocs" l
 
 let pprint_time ns =
   if ns < 1000. then
@@ -154,7 +153,7 @@ let default_bins = Array.concat [
 let make_bins max =
   let max_in_default_bins = Array.get default_bins (Array.length default_bins - 1) in
   let bins = Array.concat [
-      default_bins;
+    default_bins;
     if max > max_in_default_bins then [|max|] else [||];
   ]
   in
@@ -162,7 +161,6 @@ let make_bins max =
 
 let print_histogram name l pprint =
   let open Owl_base_stats in
-  Printf.printf "==== %s\n" name;
   let arr = l |> Array.of_list |> Array.map float_of_int in
   let bins = make_bins (max arr) in
   let h = histogram bins arr in
@@ -172,7 +170,7 @@ let print_histogram name l pprint =
           l := (Printf.sprintf "%s..%s" (pprint h.bins.(i)) (pprint h.bins.(i + 1)),
                Printf.sprintf "%d" h.counts.(i))::!l
   done;
-  pp_two_columns Format.std_formatter !l
+  pp_two_columns Format.std_formatter name !l
 
 let print_events_stats name events =
   match Events.get events name with
@@ -183,10 +181,11 @@ let print_flushes flushs =
   let a = Array.of_list flushs |> Array.map float_of_int in
   let median = Owl_base_stats.median a in
   let total = Owl_base_stats.sum a in
-  Printf.printf "==== eventlog/flush\n";
-  Printf.printf "median flush time: %s\n" (pprint_time median);
-  Printf.printf "total flush time: %s\n" (pprint_time total);
-  Printf.printf "flush count: %d\n" (List.length flushs)
+  pp_two_columns Format.std_formatter  "eventlog/flush" [
+    "median flush time", (pprint_time median);
+    "total flush time", (pprint_time total);
+    "flush count", (List.length flushs |> string_of_int);
+  ]
 
 (* file traversing gluing everything together *)
 let traverse f t =
