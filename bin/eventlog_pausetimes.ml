@@ -193,12 +193,12 @@ module Args = struct
 
   open Cmdliner
 
-  let name =
-    let doc = "Name for the compiler switch" in
-    Arg.(required & pos ~rev:true 0 (some string) None & info [] ~docv:"NAME" ~doc)
   let srcs =
-     let doc = "Source file(s) to copy. You can also pass a directory as an argument and it will process all files within this directory." in
-     Arg.(non_empty & pos_left ~rev:true 0 file [] & info [] ~docv:"SOURCE" ~doc)
+    let doc = "Source file(s) to copy. You can also pass a directory as an argument and it will process all files within this directory." in
+    Arg.(non_empty & pos_all file [] & info [] ~docv:"SOURCE" ~doc)
+  let name =
+    let doc = "compiler switch name" in
+    Arg.(value & opt string "pausetimes" & info ["n"; "--name"] ~docv:"OUTPUT" ~doc)
   let info =
     let doc = "" in
     let man = [
