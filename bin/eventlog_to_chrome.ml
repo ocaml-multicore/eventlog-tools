@@ -153,9 +153,9 @@ module Args = struct
 
   open Cmdliner
 
-  let tracedir =
-    let doc = "source" in
-    Arg.(non_empty & pos_all string [] & info [] ~docv:"SOURCE" ~doc)
+  let srcs =
+    let doc = "Source file(s) to copy. You can also pass a directory as an argument and it will process all files within this directory." in
+    Arg.(non_empty & pos_all file [] & info [] ~docv:"SOURCE" ~doc)
   let outfile =
     let doc = "output JSON file (default to stdout)" in
     Arg.(value & opt (some string) None & info ["o"; "output"] ~docv:"OUTPUT" ~doc)
@@ -171,4 +171,4 @@ end
 
 let () =
   let open Cmdliner in
-  Term.exit @@ Term.eval Term.(const main $ Args.outfile $ Args.tracedir, Args.info)
+  Term.exit @@ Term.eval Term.(const main $ Args.outfile $ Args.srcs, Args.info)
