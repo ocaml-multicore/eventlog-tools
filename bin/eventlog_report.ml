@@ -206,12 +206,12 @@ let traverse f t =
   in
   aux ()
 
-let main in_dir =
+let main src =
   let allocs = Hashtbl.create 10 in
   let events = Events.create () in
   let counters = Hashtbl.create 10 in
   let t = { allocs; events; flushs = []; counters; } in
-  Common.load [in_dir] >>= fun tracedir ->
+  Common.load src >>= fun tracedir ->
   (List.fold_left
      (fun err f -> if Result.is_error err then err else traverse f t)
      (Result.ok ()) tracedir)
@@ -223,30 +223,22 @@ let main in_dir =
   Ok ()
 
 module Args = struct
-  type t = {
-    events : Events.t;
-    allocs : allocs;
-    counters : counters;
-    mutable flushs : int list;
-  }
-
 
   open Cmdliner
 
-  let trace =
-    let doc = "input OCaml CTF trace dir" in
-    Arg.(required & pos 0 (some string) None  & info [] ~doc )
-
+  let srcs =
+     let doc = "Source file(s) to copy. You can also pass a directory as an argument and it will process all files within this directory." in
+     Arg.(non_empty & pos_all file [] & info [] ~docv:"SOURCE" ~doc)
   let info =
     let doc = "" in
     let man = [
       `S Manpage.s_bugs;
     ]
     in
-    Term.info "ocaml-eventlog-report" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
+    Term.info "ocaml-eventlog-pausetimes" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
 
 end
 
 let () =
   let open Cmdliner in
-  Term.exit @@ Term.eval Term.(const main  $ Args.trace, Args.info)
+  Term.exit @@ Term.eval Term.(const main  $ Args.srcs, Args.info)
