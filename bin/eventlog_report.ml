@@ -220,6 +220,11 @@ let main in_file =
   Hashtbl.iter (fun s l -> print_histogram (Eventlog.string_of_gc_counter s) l pprint_quantity) counters;
   print_flushes t.flushs;
   Ok ()
+
+let main in_file =
+  match main in_file with
+  | Ok () -> 0
+  | Error _ -> 1 
   
 module Args = struct
   open Cmdliner
@@ -234,10 +239,12 @@ module Args = struct
       `S Manpage.s_bugs;
     ]
     in
-    Term.info "ocaml-eventlog-report" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
+    Cmd.info "ocaml-eventlog-report" ~version:"%%VERSION%%" ~doc ~man
 
 end
 
 let () =
   let open Cmdliner in
-  Term.exit @@ Term.eval Term.(const main  $ Args.trace, Args.info)
+  let main_t = Term.(const main  $ Args.trace) in
+  let r = Cmd.eval' (Cmd.v Args.info main_t) in
+  Stdlib.exit r

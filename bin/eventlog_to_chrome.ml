@@ -96,6 +96,11 @@ let main in_file out_file =
   | Error (`Msg s) -> Error (`Msg s)
   | o -> o
 
+let main in_file out_file =
+  match main in_file out_file with
+  | Ok (Ok _) -> 0
+  | _ -> 1 
+
 module Args = struct
 
   open Cmdliner
@@ -114,10 +119,12 @@ module Args = struct
       `S Manpage.s_bugs;
     ]
     in
-    Term.info "ocaml-eventlog-to-chrome" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
+    Cmd.info "ocaml-eventlog-to-chrome" ~version:"%%VERSION%%" ~doc ~man
 
 end
 
 let () =
   let open Cmdliner in
-  Term.exit @@ Term.eval Term.(const main  $ Args.trace $ Args.outfile, Args.info)
+  let main_t = Term.(const main  $ Args.trace $ Args.outfile) in
+  let r = Cmd.eval' (Cmd.v Args.info main_t) in
+  Stdlib.exit r
